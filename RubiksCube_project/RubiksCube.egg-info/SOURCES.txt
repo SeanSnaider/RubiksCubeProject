@@ -1,0 +1,10 @@
+dev-requirements.txt
+pyproject.toml
+RubiksCube/__init__.py
+RubiksCube/__main__.py
+RubiksCube.egg-info/PKG-INFO
+RubiksCube.egg-info/SOURCES.txt
+RubiksCube.egg-info/dependency_links.txt
+RubiksCube.egg-info/requires.txt
+RubiksCube.egg-info/top_level.txt
+tests/test_RubiksCube.py
