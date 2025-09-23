@@ -1,0 +1,16 @@
+{
+    "python-envs.pythonProjects": [
+        {
+            "path": "test.py",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ],
+    "mypy.extraArguments": [
+        "--strict",
+        "--disallow-untyped-defs",
+        "--disable-error-code=empty-body",
+        "--disable-error-code=return",
+        "--explicit-package-bases"
+    ]
+}

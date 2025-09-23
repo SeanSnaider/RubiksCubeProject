@@ -3,6 +3,7 @@ import random
 import pygame
 pygame.init()
 
+
 # Constants
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 1000
@@ -1871,9 +1872,9 @@ class RubiksCube:
         return True
     
     def rotateCubeZ(self):
-        moveS(self)
-        moveF(self)
-        moveBPrime(self)
+        self.moveS()
+        self.moveF()
+        self.moveBPrime()
         
     def rotateCubeZprime(self):
         self.moveSPrime()
