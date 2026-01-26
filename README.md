@@ -31,20 +31,54 @@ pip install pygame
 python RubiksCube_project/main.py
 ```
 
-## Usage
+## Controls
+
+Keybinds follow a speedcuber-friendly layout (similar to csTimer).
+
+### Face Moves
+
+| Key | Move | | Key | Move |
+|-----|------|-|-----|------|
+| I | R | | K | R' |
+| D | L | | E | L' |
+| J | U | | F | U' |
+| S | D | | L | D' |
+| H | F | | G | F' |
+| W | B | | O | B' |
+
+### Slice Moves
+
+| Key | Move | | Key | Move |
+|-----|------|-|-----|------|
+| 5, 6 | M | | X, . | M' |
+| 2 | E | | 9 | E' |
+| 0 | S | | 1 | S' |
+
+### Wide Moves
+
+| Key | Move | | Key | Move |
+|-----|------|-|-----|------|
+| U | Rw | | M | Rw' |
+| V | Lw | | R | Lw' |
+| , | Uw | | C | Uw' |
+| Z | Dw | | / | Dw' |
+
+### Cube Rotations
+
+| Key | Move | | Key | Move |
+|-----|------|-|-----|------|
+| T, Y | x | | B, N | x' |
+| ; | y | | A | y' |
+| P | z | | Q | z' |
+
+### Utility
 
 | Key | Action |
 |-----|--------|
-| Arrow keys | Rotate cube view |
-| R / R' | Right face clockwise / counter-clockwise |
-| L / L' | Left face clockwise / counter-clockwise |
-| U / U' | Up face clockwise / counter-clockwise |
-| D / D' | Down face clockwise / counter-clockwise |
-| F / F' | Front face clockwise / counter-clockwise |
-| B / B' | Back face clockwise / counter-clockwise |
-| Space | Scramble |
-| S | Solve |
-| T | Toggle teaching mode |
+| [ | Scramble cube |
+| ] | Reset cube |
+| \ | Solve (Kociemba algorithm) |
+| = | Clear move history |
 
 *(Adjust keybindings based on your actual implementation)*
 
