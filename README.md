@@ -1,5 +1,7 @@
 # Rubik's Cube Solver and Teaching Tool
 
+🚧 Currently rebuilding as a full-stack web app (React/FastAPI/MongoDB). Original Pygame implementation available in current branch.
+
 A 3D Rubik's Cube simulator with a near-optimal solving algorithm and step-by-step tutorial mode. Built by someone who's been speedcubing for 10+ years (sub-7 seconds).
 
 ![Python](https://img.shields.io/badge/Python-3.x-blue)
