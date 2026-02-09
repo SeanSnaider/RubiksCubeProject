@@ -4,6 +4,7 @@ uvicorn[standard]>=0.27.0 # ASGI server to run FastAPI
 
 # Database
 motor>=3.3.0              # Async MongoDB driver for Python
+certifi>=2024.0           # SSL certificates for MongoDB Atlas
 
 # Data Validation
 pydantic>=2.5.0           # Data validation using Python type annotations
