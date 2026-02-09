@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.database import connect_to_mongo, close_mongo_connection
 from app.controllers import cube_controller, solve_controller
+import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,15 +32,21 @@ app = FastAPI(
 # This allows your React frontend (running on port 5173) to make requests
 # to this backend (running on port 8000). Without CORS, browsers block
 # requests between different origins for security.
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+# In production, add the Vercel frontend URL via environment variable
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",   # Vite dev server
-        "http://127.0.0.1:5173",   # Alternative localhost
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
