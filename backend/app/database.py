@@ -43,7 +43,7 @@ async def connect_to_mongo():
     This is a "lifespan" event - it runs once at startup.
     """
     print(f"Connecting to MongoDB at {MONGODB_URL}...")
-    db.client = AsyncIOMotorClient(MONGODB_URL, tlsCAFile=certifi.where())
+    db.client = AsyncIOMotorClient(MONGODB_URL, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000)
 
     # Verify connection works
     try:

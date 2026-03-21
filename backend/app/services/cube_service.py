@@ -538,11 +538,13 @@ def get_solution(state: dict) -> str:
     Returns a move sequence that solves the cube.
     Raises ValueError if the cube state is invalid/unsolvable.
     """
-    import kociemba
+    import twophase.solver as sv
 
     cube_string = state_to_kociemba_string(state)
     try:
-        solution = kociemba.solve(cube_string)
+        solution = sv.solve(cube_string, 20, 2)
+        if solution.startswith("Error"):
+            raise ValueError(solution)
         return solution
     except ValueError as e:
         raise ValueError(f"Invalid cube state: {e}")
