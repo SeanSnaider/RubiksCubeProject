@@ -14,3 +14,4 @@ kociemba>=1.2.0           # Two-phase algorithm for solving Rubik's Cube
 
 # Utilities
 python-multipart>=0.0.6   # Required for form data parsing
+python-dotenv>=1.0.0      # Load environment variables from .env file

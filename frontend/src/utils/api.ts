@@ -1,5 +1,5 @@
 import type { CubeState } from '../types'
-const base_api = `http://localhost:8000/api`
+const base_api = import.meta.env.VITE_API_URL || `http://localhost:8000/api`
 
 export async function fetchScramble() {
     const response = await fetch(`${base_api}/cube/scramble`)

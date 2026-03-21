@@ -12,6 +12,9 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional
 import os
 import certifi
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class Database:
