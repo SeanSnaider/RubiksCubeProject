@@ -51,7 +51,7 @@ async def connect_to_mongo():
         print("Successfully connected to MongoDB!")
     except Exception as e:
         print(f"Failed to connect to MongoDB: {e}")
-        raise
+        print("Server will start without database - solve tracking unavailable")
 
 
 async def close_mongo_connection():
