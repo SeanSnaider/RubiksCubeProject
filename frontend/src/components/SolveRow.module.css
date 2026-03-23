@@ -1,0 +1,107 @@
+.row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 5px var(--space-2);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.1s;
+}
+
+.header:hover {
+  background-color: var(--bg-hover);
+}
+
+.index {
+  font-size: 0.7em;
+  color: var(--text-dim);
+  min-width: 22px;
+  text-align: right;
+}
+
+.time {
+  font-family: monospace;
+  font-size: 0.9em;
+  font-weight: 500;
+  flex: 1;
+}
+
+.badge {
+  font-size: 0.65em;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+
+.badgePlus2 {
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.badgeDnf {
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.chevron {
+  font-size: 0.65em;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+
+.chevronOpen {
+  transform: rotate(90deg);
+}
+
+.details {
+  padding: var(--space-2) var(--space-2) var(--space-3) 30px;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.scramble {
+  font-family: monospace;
+  font-size: 0.75em;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin-bottom: var(--space-2);
+}
+
+.date {
+  font-size: 0.7em;
+  color: var(--text-dim);
+  margin-bottom: var(--space-3);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.penaltyBtn {
+  font-size: 0.75em;
+  padding: 2px 8px;
+}
+
+.penaltyBtnActive {
+  background-color: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.deleteBtn {
+  font-size: 0.75em;
+  padding: 2px 8px;
+  margin-left: auto;
+  color: var(--danger);
+  border-color: var(--danger-dim);
+}
+
+.deleteBtn:hover {
+  background-color: rgba(255, 68, 68, 0.15);
+  border-color: var(--danger);
+}

@@ -7,41 +7,45 @@ export async function fetchScramble() {
     return data
 }
 
-//our post method
-export async function saveSolve(timeMs: number, scramble: string) {
+export async function saveSolve(timeMs: number, scramble: string, mode: 'cube' | 'timer' = 'cube') {
     const response = await fetch(`${base_api}/solves`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            time_ms: timeMs,
-            scramble: scramble
-        })
-     })
-    const data = await response.json()
-    return data;
-}
-
-// our get function for fetching SOLVES, not solve
-export async function fetchSolves() {
-    const response = await fetch(`${base_api}/solves`)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ time_ms: timeMs, scramble: scramble, mode })
+    })
     const data = await response.json()
     return data
 }
 
-// function that goes and will actually apply the move to the puzzle
+export async function fetchSolves(mode?: 'cube' | 'timer') {
+    const url = mode ? `${base_api}/solves?mode=${mode}` : `${base_api}/solves`
+    const response = await fetch(url)
+    const data = await response.json()
+    return data
+}
+
+export async function deleteSolve(id: string) {
+    const response = await fetch(`${base_api}/solves/${id}`, { method: 'DELETE' })
+    if (!response.ok) throw new Error('Failed to delete solve')
+    return response.json()
+}
+
+export async function updatePenalty(id: string, penalty: '+2' | 'DNF' | null) {
+    const response = await fetch(`${base_api}/solves/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ penalty })
+    })
+    if (!response.ok) throw new Error('Failed to update penalty')
+    return response.json()
+}
+
 export async function applyMove(state: CubeState, move: string) {
-    const response = await fetch (`${base_api}/cube/move`, {
+    const response = await fetch(`${base_api}/cube/move`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            state: state,
-            moves: move
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: state, moves: move })
     })
     const data = await response.json()
-    return data;
+    return data
 }

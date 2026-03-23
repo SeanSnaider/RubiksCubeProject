@@ -21,5 +21,6 @@ export interface Solve {
   time_ms: number;
   scramble: string;
   penalty: '+2' | 'DNF' | null;
+  mode: 'cube' | 'timer';
   created_at: string;
 }

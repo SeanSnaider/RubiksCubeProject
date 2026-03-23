@@ -1,0 +1,40 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-3) var(--space-5);
+}
+
+.scramble {
+  flex: 1;
+  min-width: 0;
+  font-family: monospace;
+  font-size: 1rem;
+  color: var(--text-primary);
+  letter-spacing: 0.05em;
+  word-break: break-all;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  padding: 0.3em 0.6em;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+.iconBtn:hover {
+  color: var(--text-primary);
+}
+
+.copied {
+  color: var(--success) !important;
+}

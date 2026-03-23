@@ -7,12 +7,19 @@ router = APIRouter()
 
 
 @router.get("/")
-async def list_solves(limit: int = 100, offset: int = 0):
+async def list_solves(limit: int = 100, offset: int = 0, mode: str = None):
     """
-    GET /api/solves?limit=100&offset=0
+    GET /api/solves?limit=100&offset=0&mode=cube
+    mode filter: "cube" includes legacy records with no mode field.
     """
     db = await get_database()
-    cursor = db.solves.find().sort("created_at", -1).skip(offset).limit(limit)
+    if mode == "cube":
+        query = {"$or": [{"mode": "cube"}, {"mode": {"$exists": False}}]}
+    elif mode == "timer":
+        query = {"mode": "timer"}
+    else:
+        query = {}
+    cursor = db.solves.find(query).sort("created_at", -1).skip(offset).limit(limit)
     solves = await cursor.to_list(length=limit)
     for solve in solves:
         solve["_id"] = str(solve["_id"])

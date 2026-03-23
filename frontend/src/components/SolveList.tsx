@@ -1,38 +1,34 @@
-import type { Solve } from '../types/index'
-import { formatTime } from '../utils/formatTime'
-import { calcAo5, calcAo12, calcBest, calcMean } from '../utils/stats'
+import type { Solve } from '../types'
+import { SolveRow } from './SolveRow'
+import styles from './SolveList.module.css'
 
 interface SolveListProps {
     solves: Solve[]
+    onDelete: (id: string) => void
+    onPenalty: (id: string, penalty: '+2' | 'DNF' | null) => void
 }
 
-function showStat(val: number | null) {
-    if (val !== null) {
-        return formatTime(val)
-    } else {
-        return '--'
-    }
-}
-
-// function which holds some of the fun stuff with my custom hook (argh)
-export function SolveList({ solves }: SolveListProps) {
-
-    // weturn statement :3
+export function SolveList({ solves, onDelete, onPenalty }: SolveListProps) {
     return (
-    <div>
-        <h3>Statistics</h3>
-            <div>Best: {showStat(calcBest(solves))} 
-                | Ao5: {showStat(calcAo5(solves))}
-                | Ao12: {showStat(calcAo12(solves))}
-                | Mean: {showStat(calcMean(solves))}</div>
-            
-            <h3>Solves</h3>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                {solves.map((solve, index) => (
-                <div key={solve._id}>
-                    {index + 1}. {formatTime(solve.time_ms)}
-                </div>
-                ))}
+        <div className={styles.container}>
+            <div className={styles.header}>
+                <span className={styles.title}>Solves</span>
+                <span className={styles.count}>{solves.length} total</span>
+            </div>
+            <div className={styles.list}>
+                {solves.length === 0 ? (
+                    <div className={styles.empty}>No solves yet</div>
+                ) : (
+                    solves.map((solve, i) => (
+                        <SolveRow
+                            key={solve._id}
+                            solve={solve}
+                            index={i + 1}
+                            onDelete={onDelete}
+                            onPenalty={onPenalty}
+                        />
+                    ))
+                )}
             </div>
         </div>
     )

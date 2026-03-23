@@ -1,0 +1,174 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: var(--space-4);
+    gap: var(--space-4);
+}
+
+.progressBar {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.progressLabel {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.progressTrack {
+    height: 6px;
+    background: var(--bg-elevated);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.phaseLabel {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.tutorialCard {
+    width: 100%;
+    max-width: 600px;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.tutorialText {
+    font-size: 0.95em;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.algorithm {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1em;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(0, 170, 255, 0.08);
+    padding: var(--space-2) var(--space-3);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent);
+    letter-spacing: 0.04em;
+}
+
+.tip {
+    background: rgba(0, 204, 102, 0.08);
+    border-left: 3px solid var(--success);
+    padding: var(--space-2) var(--space-3);
+    border-radius: 6px;
+    font-size: 0.9em;
+    color: var(--text-primary);
+}
+
+.tipLabel {
+    font-weight: 700;
+    color: var(--success);
+    margin-bottom: var(--space-1);
+}
+
+.controls {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.btn {
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.btnPrimary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.btnPrimary:hover {
+    opacity: 0.85;
+}
+
+.btnPrimary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btnSecondary {
+    background: var(--bg-sidebar);
+    color: var(--text-muted);
+}
+
+.btnSecondary:hover {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+}
+
+.moveLog {
+    width: 100%;
+    max-width: 600px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    background: var(--bg-sidebar);
+    padding: var(--space-2) var(--space-3);
+    border-radius: 6px;
+    min-height: 28px;
+    word-break: break-all;
+}
+
+.stepCheck {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: 0.85em;
+    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    border-radius: 4px;
+}
+
+.checkPending {
+    color: var(--warning);
+    background: rgba(255, 170, 0, 0.1);
+}
+
+.checkDone {
+    color: var(--success);
+    background: rgba(0, 204, 102, 0.1);
+}
+
+.congratulations {
+    text-align: center;
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--success);
+    padding: var(--space-4);
+}

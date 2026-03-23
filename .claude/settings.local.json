@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"from app.services.cube_service import apply_moves, get_solved_state; s = get_solved_state\\(\\); s2 = apply_moves\\(s, ''x''\\); print\\(''x ok:'', s2[''U'']\\); s3 = apply_moves\\(s, \"\"x''\"\"\\); print\\(\"\"x'' ok:\"\", s3[''U'']\\); s4 = apply_moves\\(s, ''y''\\); print\\(''y ok:'', s4[''F'']\\); s5 = apply_moves\\(s, ''Rw''\\); print\\(''Rw ok''\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)",
+      "Bash(find \"c:\\\\Users\\\\sean\\\\Desktop\\\\wubiks_cube\\\\RubiksCubeProject\\\\RubiksCube_project\"\" -type f -name \"*.py \")",
+      "Bash(wc -l /c/Users/sean/Desktop/wubiks_cube/RubiksCubeProject/RubiksCube_project/RubiksCube/*.py)",
+      "Bash(ls -la c:/Users/sean/Desktop/wubiks_cube/RubiksCubeProject/frontend/src/components/*.module.css)"
+    ]
+  }
+}

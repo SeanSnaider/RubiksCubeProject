@@ -393,6 +393,72 @@ def move_s_prime(state: dict) -> dict:
 
 
 # =============================================================================
+# WIDE MOVES (two layers at once)
+# =============================================================================
+
+def move_rw(state: dict) -> dict:
+    """Rw: right two layers rotate like R (= R + M')"""
+    return move_r(move_m_prime(state))
+
+def move_rw_prime(state: dict) -> dict:
+    """Rw': = R' + M"""
+    return move_r_prime(move_m(state))
+
+def move_lw(state: dict) -> dict:
+    """Lw: left two layers rotate like L (= L + M)"""
+    return move_l(move_m(state))
+
+def move_lw_prime(state: dict) -> dict:
+    """Lw': = L' + M'"""
+    return move_l_prime(move_m_prime(state))
+
+def move_uw(state: dict) -> dict:
+    """Uw: top two layers rotate like U (= U + E')"""
+    return move_u(move_e_prime(state))
+
+def move_uw_prime(state: dict) -> dict:
+    """Uw': = U' + E"""
+    return move_u_prime(move_e(state))
+
+def move_dw(state: dict) -> dict:
+    """Dw: bottom two layers rotate like D (= D + E)"""
+    return move_d(move_e(state))
+
+def move_dw_prime(state: dict) -> dict:
+    """Dw': = D' + E'"""
+    return move_d_prime(move_e_prime(state))
+
+
+# =============================================================================
+# WHOLE-CUBE ROTATIONS (x, y, z)
+# =============================================================================
+
+def move_x(state: dict) -> dict:
+    """x rotation: whole cube rotates like R (= R + M' + L')"""
+    return move_r(move_m_prime(move_l_prime(state)))
+
+def move_x_prime(state: dict) -> dict:
+    """x' rotation: = R' + M + L"""
+    return move_r_prime(move_m(move_l(state)))
+
+def move_y(state: dict) -> dict:
+    """y rotation: whole cube rotates like U (= U + E' + D')"""
+    return move_u(move_e_prime(move_d_prime(state)))
+
+def move_y_prime(state: dict) -> dict:
+    """y' rotation: = U' + E + D"""
+    return move_u_prime(move_e(move_d(state)))
+
+def move_z(state: dict) -> dict:
+    """z rotation: whole cube rotates like F (= F + S + B')"""
+    return move_f(move_s(move_b_prime(state)))
+
+def move_z_prime(state: dict) -> dict:
+    """z' rotation: = F' + S' + B"""
+    return move_f_prime(move_s_prime(move_b(state)))
+
+
+# =============================================================================
 # MOVE DISPATCHER
 # =============================================================================
 
@@ -407,6 +473,15 @@ MOVE_MAP = {
     'M': move_m, "M'": move_m_prime, 'M2': lambda s: move_m(move_m(s)),
     'E': move_e, "E'": move_e_prime, 'E2': lambda s: move_e(move_e(s)),
     'S': move_s, "S'": move_s_prime, 'S2': lambda s: move_s(move_s(s)),
+    # Wide moves
+    'Rw': move_rw, "Rw'": move_rw_prime, 'Rw2': lambda s: move_rw(move_rw(s)),
+    'Lw': move_lw, "Lw'": move_lw_prime, 'Lw2': lambda s: move_lw(move_lw(s)),
+    'Uw': move_uw, "Uw'": move_uw_prime, 'Uw2': lambda s: move_uw(move_uw(s)),
+    'Dw': move_dw, "Dw'": move_dw_prime, 'Dw2': lambda s: move_dw(move_dw(s)),
+    # Whole-cube rotations
+    'x': move_x, "x'": move_x_prime, 'x2': lambda s: move_x(move_x(s)),
+    'y': move_y, "y'": move_y_prime, 'y2': lambda s: move_y(move_y(s)),
+    'z': move_z, "z'": move_z_prime, 'z2': lambda s: move_z(move_z(s)),
 }
 
 
@@ -418,6 +493,8 @@ def parse_moves(moves: str) -> list:
     - Single moves: R, U, F, etc.
     - Prime moves: R', U', F', etc.
     - Double moves: R2, U2, F2, etc.
+    - Wide moves: Rw, Uw, Rw', etc.
+    - Rotations: x, y, z, x', y', z'
     """
     result = []
     i = 0
@@ -429,21 +506,37 @@ def parse_moves(moves: str) -> list:
             i += 1
             continue
 
-        # Get the base move letter
-        if moves[i].upper() in 'URFDLBMES':
-            move = moves[i].upper()
+        ch = moves[i]
+
+        # Whole-cube rotations: x, y, z (lowercase only)
+        if ch in 'xyz':
+            move = ch
             i += 1
-
-            # Check for modifier
-            if i < len(moves):
-                if moves[i] == "'":
-                    move += "'"
-                    i += 1
-                elif moves[i] == "2":
-                    move += "2"
-                    i += 1
-
+            if i < len(moves) and moves[i] == "'":
+                move += "'"
+                i += 1
+            elif i < len(moves) and moves[i] == "2":
+                move += "2"
+                i += 1
             result.append(move)
+
+        # Standard and wide face moves
+        elif ch.upper() in 'URFDLBMES':
+            move = ch.upper()
+            i += 1
+            # Check for wide modifier
+            if i < len(moves) and moves[i] == 'w':
+                move += 'w'
+                i += 1
+            # Check for prime or double
+            if i < len(moves) and moves[i] == "'":
+                move += "'"
+                i += 1
+            elif i < len(moves) and moves[i] == "2":
+                move += "2"
+                i += 1
+            result.append(move)
+
         else:
             i += 1  # Skip unknown characters
 

@@ -1,0 +1,47 @@
+.panel {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: var(--space-3);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px var(--space-4);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.label {
+  font-size: 0.75em;
+  color: var(--text-muted);
+}
+
+.value {
+  font-size: 0.85em;
+  font-family: monospace;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.valueBest {
+  color: var(--success);
+}
+
+.valueDnf {
+  color: var(--danger);
+}

@@ -1,91 +1,127 @@
 import type { Solve } from '../types'
 
-// Helper: get the effective time for a solve (accounting for penalties)
-// +2 adds 2000ms, DNF = Infinity
-function effectiveTime(solve: Solve): number {
+export function effectiveTime(solve: Solve): number {
     if (solve.penalty === 'DNF') return Infinity
     if (solve.penalty === '+2') return solve.time_ms + 2000
     return solve.time_ms
 }
 
-// TODO(human): Implement these four statistics functions
-// Each takes an array of Solve objects (most recent first)
+export function calcSolveCount(solves: Solve[]): number {
+    return solves.length
+}
 
-// Best single: return the lowest effective time, or null if no solves
 export function calcBest(solves: Solve[]): number | null {
     if (solves.length === 0) return null
-    const times = solves.map(s => effectiveTime(s))
     let best = Infinity
-    for (let index: number = 0; index < times.length; index++) {
-        if (times[index] < best) {
-            best = times[index]
+    for (const s of solves) {
+        const t = effectiveTime(s)
+        if (t < best) best = t
+    }
+    return best === Infinity ? null : best
+}
+
+export function calcWorst(solves: Solve[]): number | null {
+    if (solves.length === 0) return null
+    let hasNonDNF = false
+    let worst = -Infinity
+    for (const s of solves) {
+        const t = effectiveTime(s)
+        if (t === Infinity) return Infinity
+        hasNonDNF = true
+        if (t > worst) worst = t
+    }
+    return hasNonDNF ? worst : null
+}
+
+export function calcMean(solves: Solve[]): number | null {
+    if (solves.length === 0) return null
+    let total = 0
+    let count = 0
+    for (const s of solves) {
+        const t = effectiveTime(s)
+        if (t !== Infinity) {
+            total += t
+            count++
+        }
+    }
+    return count === 0 ? null : total / count
+}
+
+export function calcStdDev(solves: Solve[]): number | null {
+    if (solves.length < 2) return null
+    const times = solves.map(effectiveTime).filter(t => t !== Infinity)
+    if (times.length < 2) return null
+    const mean = times.reduce((a, b) => a + b, 0) / times.length
+    const variance = times.reduce((sum, t) => sum + (t - mean) ** 2, 0) / times.length
+    return Math.sqrt(variance)
+}
+
+// Generic trimmed average of N solves (solves array is most-recent-first).
+// WCA rules: drop best and worst by index, average the remaining N-2.
+// If more than 1 DNF → DNF average (Infinity).
+export function calcAoN(solves: Solve[], n: number): number | null {
+    if (solves.length < n) return null
+    const times = solves.slice(0, n).map(effectiveTime)
+
+    if (times.filter(t => t === Infinity).length > 1) return Infinity
+
+    let bestIdx = 0
+    let worstIdx = 0
+    for (let i = 1; i < n; i++) {
+        if (times[i] < times[bestIdx]) bestIdx = i
+        if (times[i] > times[worstIdx]) worstIdx = i
+    }
+
+    // If all times are equal, bestIdx and worstIdx are both 0 — use 0 and 1
+    if (bestIdx === worstIdx) {
+        bestIdx = 0
+        worstIdx = 1
+    }
+
+    let total = 0
+    for (let i = 0; i < n; i++) {
+        if (i !== bestIdx && i !== worstIdx) {
+            total += times[i]
+        }
+    }
+    return total / (n - 2)
+}
+
+export function calcAo5(solves: Solve[]): number | null {
+    return calcAoN(solves, 5)
+}
+
+export function calcAo12(solves: Solve[]): number | null {
+    return calcAoN(solves, 12)
+}
+
+export function calcAo50(solves: Solve[]): number | null {
+    return calcAoN(solves, 50)
+}
+
+export function calcAo100(solves: Solve[]): number | null {
+    return calcAoN(solves, 100)
+}
+
+// Best AoN: slide a window across all solves and return the minimum average.
+// Caps at the 200 most recent solves for performance.
+export function calcBestAoN(solves: Solve[], n: number): number | null {
+    if (solves.length < n) return null
+    const pool = solves.slice(0, Math.min(solves.length, 200))
+    let best: number | null = null
+    for (let i = 0; i <= pool.length - n; i++) {
+        const avg = calcAoN(pool.slice(i, i + n), n)
+        if (avg !== null && avg !== Infinity && (best === null || avg < best)) {
+            best = avg
         }
     }
     return best
 }
 
-// Mean: return the simple average of all effective times, or null if empty
-// If ANY solve is DNF, you could either skip it or return Infinity — your choice
-export function calcMean(solves: Solve[]): number | null {
-    if (solves.length === 0) return null
-    const times = solves.map(s => effectiveTime(s))
-    let count = 0
-    let total = 0
-    for (let index: number = 0; index < times.length; index++) {
-        if (times[index] !== Infinity) {
-            total += times[index]
-            count++
-        }
-    }
-    return total / count
+export function calcBestAo5(solves: Solve[]): number | null {
+    return calcBestAoN(solves, 5)
 }
 
-// Average of 5: use the 5 most recent solves
-// Drop the best and worst, average the remaining 3
-// Return null if fewer than 5 solves
-export function calcAo5(solves: Solve[]): number | null {
-    if (solves.length < 5) return null
-    const times = solves.map(s => effectiveTime(s)).slice(0, 5)
-    let best = Infinity
-    let worst = -1
-    let total = 0
-    for (let index: number = 0; index < 5; index++) {
-        if (times[index] > worst) {
-            worst = times[index]
-        }
-        if (times[index] < best) {
-            best = times[index]
-        }
-    }
-    for (let index: number = 0; index < 5; index++) {
-        if (times[index] !== best && times[index] !== worst) {
-            total += times[index]
-        }
-    }
-    return total / 3
-}
-
-// Average of 12: use the 12 most recent solves
-// Drop the best and worst, average the remaining 10
-// Return null if fewer than 12 solves
-export function calcAo12(solves: Solve[]): number | null {
-    if (solves.length < 12) return null
-    const times = solves.map(s => effectiveTime(s)).slice(0, 12)
-    let best = Infinity
-    let worst = -1
-    let total = 0
-    for (let index: number = 0; index < 12; index++) {
-        if (times[index] > worst) {
-            worst = times[index]
-        }
-        if (times[index] < best) {
-            best = times[index]
-        }
-    }
-    for (let index: number = 0; index < 12; index++) {
-        if (times[index] !== best && times[index] !== worst) {
-            total += times[index]
-        }
-    }
-    return total / 10
+export function calcBestAo12(solves: Solve[]): number | null {
+    return calcBestAoN(solves, 12)
 }
