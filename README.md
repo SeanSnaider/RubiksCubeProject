@@ -4,6 +4,10 @@ A browser-based Rubik's cube simulator with a near-optimal solver, a competition
 timer, and a 38-step guided tutorial that teaches CFOP by watching your cube state. The
 solver returns a solution of 20 moves or fewer in well under a second.
 
+## Website
+
+<https://rubikscubeproject-frontend2.onrender.com/>
+
 ## Why I built it
 
 I've been speedcubing for over a decade. I can solve a cube in a few seconds using CFOP,
