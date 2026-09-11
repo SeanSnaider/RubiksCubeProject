@@ -600,6 +600,77 @@ def generate_scramble(length: int = 21) -> str:
 # KOCIEMBA SOLVER INTEGRATION
 # =============================================================================
 
+# The 24 possible cube orientations, as a tilt that chooses which face is up
+# followed by a spin about the vertical axis. Searching these is how we put a
+# cube back into the orientation the facelet string assumes.
+ORIENTATION_CANDIDATES = [
+    f"{tilt} {spin}".strip()
+    for tilt in ('', 'x', "x'", 'x2', 'z', "z'")
+    for spin in ('', 'y', "y'", 'y2')
+]
+
+
+def normalize_orientation(state: dict) -> tuple:
+    """
+    Rotate the cube into the orientation the Kociemba facelet string assumes.
+
+    The facelet format has no way to express orientation: it identifies colors
+    by their centers, so it requires the U center to be U, the F center to be F,
+    and so on. Slice moves (M/E/S), wide moves and whole-cube rotations all move
+    centers, which is perfectly legal on a real cube but leaves the solver
+    looking at a string it considers malformed. It reports this as
+    "Wrong edge and corner parity", which points at the pieces rather than at
+    the orientation, so this has to be corrected before serializing.
+
+    Args:
+        state: Any cube state, in any orientation.
+
+    Returns:
+        A tuple of (rotated state, rotations applied). The rotation string is in
+        standard notation and may be empty if the cube was already oriented; it
+        has to be prepended to any solution so the solution still applies to the
+        cube the caller is holding.
+
+    Raises:
+        ValueError: If no rotation produces a valid center arrangement, which
+            means the centers themselves are impossible.
+    """
+    for rotations in ORIENTATION_CANDIDATES:
+        candidate = apply_moves(state, rotations) if rotations else state
+        if candidate['U'][1][1] == 'U' and candidate['F'][1][1] == 'F':
+            return candidate, rotations
+
+    raise ValueError(
+        "Invalid cube state: no orientation gives the six centers distinct faces"
+    )
+
+
+def to_standard_notation(solution: str) -> str:
+    """
+    Convert a RubikTwoPhase solution to the notation the rest of the app uses.
+
+    The solver emits quarter-turn counts ("U1 R2 F3") and a move-count suffix
+    ("(19f)"). Everything else here speaks standard notation ("U R2 F'"), and
+    parse_moves() silently mangles the solver's dialect, reading "F3" as "F".
+
+    Args:
+        solution: A raw solution string from the solver.
+
+    Returns:
+        The same solution in standard notation, without the move-count suffix.
+
+    Raises:
+        ValueError: If a token is not a face letter followed by 1, 2 or 3.
+    """
+    moves = []
+    for token in solution.split('(')[0].split():
+        face, turns = token[0], token[1:]
+        if face not in 'URFDLB' or turns not in ('1', '2', '3'):
+            raise ValueError(f"Unrecognised move in solution: {token}")
+        moves.append(face if turns == '1' else face + ('2' if turns == '2' else "'"))
+    return ' '.join(moves)
+
+
 def state_to_kociemba_string(state: dict) -> str:
     """
     Convert cube state to Kociemba solver format.
@@ -611,6 +682,10 @@ def state_to_kociemba_string(state: dict) -> str:
     - Next 9 chars: D face
     - Next 9 chars: L face
     - Last 9 chars: B face
+
+    Assumes the cube is already in the standard orientation (U center U, F
+    center F). Pass it through normalize_orientation() first if the cube may
+    have been rotated.
     """
     face_order = ['U', 'R', 'F', 'D', 'L', 'B']
     result = ''
@@ -626,21 +701,35 @@ def state_to_kociemba_string(state: dict) -> str:
 
 def get_solution(state: dict) -> str:
     """
-    Get optimal solution using Kociemba two-phase algorithm.
+    Get a near-optimal solution using the Kociemba two-phase algorithm.
 
-    Returns a move sequence that solves the cube.
-    Raises ValueError if the cube state is invalid/unsolvable.
+    The cube is re-oriented before solving, so a cube the user has turned with
+    slice moves or whole-cube rotations still solves. Any rotations needed to
+    get there are prepended to the solution, which means applying the whole
+    returned sequence to the state passed in always ends on a solved cube.
+
+    Args:
+        state: The cube state to solve, in any orientation.
+
+    Returns:
+        A move sequence in standard notation, 20 moves or fewer plus at most
+        two leading rotations.
+
+    Raises:
+        ValueError: If the cube state is invalid or unsolvable.
     """
     import twophase.solver as sv
 
-    cube_string = state_to_kociemba_string(state)
+    oriented, rotations = normalize_orientation(state)
+    cube_string = state_to_kociemba_string(oriented)
     try:
         solution = sv.solve(cube_string, 20, 2)
         if solution.startswith("Error"):
             raise ValueError(solution)
-        return solution
     except ValueError as e:
         raise ValueError(f"Invalid cube state: {e}")
+
+    return f"{rotations} {to_standard_notation(solution)}".strip()
 
 
 def validate_state(state: dict) -> bool:

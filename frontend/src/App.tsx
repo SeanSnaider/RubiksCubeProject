@@ -12,7 +12,7 @@ import { SpacebarTimer } from './components/SpacebarTimer'
 import { LearnMode } from './components/LearnMode'
 import { generateScramble } from './utils/scramble'
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { fetchScramble, applyMove } from './utils/api'
+import { applyMove, applyMoves, getSolvedState } from './utils/cubeMoves'
 import {
     getTimerSolves, addTimerSolve, removeTimerSolve, setTimerPenalty,
     getCubeSolves, addCubeSolve, removeCubeSolve, setCubePenalty,
@@ -22,17 +22,16 @@ import { useTimer } from './hooks/useTimer'
 import { useSpacebarTimer } from './hooks/useSpacebarTimer'
 import { isSolved } from './utils/isSolved'
 
-const solvedCube: CubeState = {
-    U: [['U','U','U'], ['U','U','U'], ['U','U','U']],
-    D: [['D','D','D'], ['D','D','D'], ['D','D','D']],
-    L: [['L','L','L'], ['L','L','L'], ['L','L','L']],
-    R: [['R','R','R'], ['R','R','R'], ['R','R','R']],
-    F: [['F','F','F'], ['F','F','F'], ['F','F','F']],
-    B: [['B','B','B'], ['B','B','B'], ['B','B','B']],
-}
+const solvedCube: CubeState = getSolvedState()
 
 // Whole-cube rotations — should not start the timer
 const ROTATION_MOVES = new Set(['x', "x'", 'x2', 'y', "y'", 'y2', 'z', "z'", 'z2'])
+
+// How long the finished cube stays on screen after a solve before the next
+// scramble replaces it. Moves used to be applied server-side, so the round trip
+// left the solved cube visible for a moment; now that they are instant, that
+// pause has to be deliberate or the solve would never be seen.
+const SOLVED_PAUSE_MS = 800
 
 function App() {
     const [mode, setMode] = useState<'cube' | 'timer' | 'learn'>('cube')
@@ -56,14 +55,33 @@ function App() {
     const scrambleRef = useRef(scramble)
     useEffect(() => { scrambleRef.current = scramble }, [scramble])
 
+    // Mirrors cubeState, but updated synchronously on every change. React batches
+    // state updates until the next render, so several keypresses within one frame
+    // would otherwise all read the same stale cube and lose all but the last move.
+    const cubeStateRef = useRef(cubeState)
+
+    /**
+     * Set the cube to a new state, keeping the synchronous mirror in step.
+     *
+     * @param next - The state to display. Always a fresh object, never mutated.
+     */
+    function commitCubeState(next: CubeState) {
+        cubeStateRef.current = next
+        setCubeState(next)
+    }
+
     function refreshCubeSolves() {
         setCubeSolves(getCubeSolves())
     }
 
-    async function newScramble() {
-        const data = await fetchScramble()
-        setScramble(data.scramble)
-        setCubeState(data.state)
+    // Pending post-solve scramble, so it can be cancelled if the app unmounts first
+    const nextScrambleTimeoutRef = useRef<number | null>(null)
+
+    function newScramble() {
+        nextScrambleTimeoutRef.current = null
+        const next = generateScramble()
+        setScramble(next)
+        commitCubeState(applyMoves(solvedCube, next))
     }
 
     // ── Timer mode ─────────────────────────────────────────────────────────
@@ -118,16 +136,26 @@ function App() {
             if (timerStateRef.current === 'stopped') reset()
         }
 
-        applyMove(cubeState, move).then(newState => {
-            setCubeState(newState)
-            if (!isRotation && isSolved(newState)) {
-                stop()
-                addCubeSolve(timeMsRef.current, scrambleRef.current)
-                refreshCubeSolves()
-                newScramble()
-            }
-        })
-    }, [mode, cubeState, start, stop, reset])
+        // Applied locally and synchronously so the cube turns in the same frame
+        // as the keypress, with no network round trip in between.
+        const newState = applyMove(cubeStateRef.current, move)
+        commitCubeState(newState)
+
+        if (!isRotation && isSolved(newState)) {
+            stop()
+            addCubeSolve(timeMsRef.current, scrambleRef.current)
+            refreshCubeSolves()
+            // Leave the solved cube up briefly before scrambling it again.
+            nextScrambleTimeoutRef.current = window.setTimeout(newScramble, SOLVED_PAUSE_MS)
+        }
+    }, [mode, start, stop, reset])
+
+    // Don't scramble a cube that is no longer mounted
+    useEffect(() => () => {
+        if (nextScrambleTimeoutRef.current !== null) {
+            clearTimeout(nextScrambleTimeoutRef.current)
+        }
+    }, [])
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown)

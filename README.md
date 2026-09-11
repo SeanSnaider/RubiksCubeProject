@@ -1,226 +1,184 @@
 # Rubik's Cube Solver and Teaching Tool
 
-A full-stack 3D Rubik's Cube simulator with a near-optimal solving algorithm, competition-style timer, and step-by-step tutorial mode. Built by someone who's been speedcubing for 10+ years (sub-7 seconds).
+A browser-based Rubik's cube simulator with a near-optimal solver, a competition-style
+timer, and a 38-step guided tutorial that teaches CFOP by watching your cube state. The
+solver returns a solution of 20 moves or fewer in well under a second.
 
-Originally a Pygame desktop app built as a high school capstone in collaboration with [TheCubicle.com](https://www.thecubicle.com/), now fully refactored into a modern web application with MVC architecture, CSS 3D rendering, and solve tracking inspired by [csTimer](https://cstimer.net/).
+## Why I built it
 
-![React](https://img.shields.io/badge/React-18-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green)
-![MongoDB](https://img.shields.io/badge/MongoDB-7-green)
-![Python](https://img.shields.io/badge/Python-3.10+-yellow)
+I've been speedcubing for over a decade. I can solve a cube in a few seconds using CFOP,
+which is a human method: pattern recognition, muscle memory, roughly 50-60 moves. A
+computer doesn't need any of that, and the gap between how I solve a cube and how a
+machine solves optimally is genuinely interesting.
 
-<!-- ![App Screenshot](docs/screenshot.png) -->
+I wanted to build the cube itself rather than drive someone else's. The move engine, the
+state model, the solver integration, and the teaching tool are all mine; the two-phase
+search is a library, because reimplementing a well-studied search was the least
+interesting part of the problem. The first version was a Pygame capstone. This is the
+rebuild: the same engine behind a real interface, built so other cubers could use it.
 
-## Features
+## How it works
 
-**Solver**
-- Implements Kociemba's two-phase algorithm
-- Computes near-optimal solutions (≤20 moves) in under 1 second
-- Real-time 3D rendering with CSS 3D transforms
+### The cube engine
 
-**Teaching Mode**
-- Step-by-step tutorial for learning to solve the cube
-- State validation at each stage — cross, corners, second layer, top face
-- Blocks progression until each stage is completed correctly
-- Designed to teach the CFOP method fundamentals
+The core is a stateless move engine over a plain face model: six 3x3 grids, one per face,
+each cell holding a color. Every move is a pure function from one state to the next, which
+makes the whole thing easy to test against an exact oracle and easy to reason about.
 
-**Competition Timer**
-- Spacebar-driven timer with 15-second WCA-style inspection countdown
-- Automatic +2 and DNF penalty detection
-- Every solve persisted to MongoDB with scramble, time, and penalty data
+It implements 48 moves — the 18 face turns, the M/E/S slices, the wide turns, and the
+whole-cube x/y/z rotations — with the derived moves composed from the primitives rather
+than hand-coded (`Rw` is `R` after `M'`, `x` is `R` after `M'` after `L'`). Primes are
+three quarter turns. That composition is why the move table is a few hundred lines instead
+of a few thousand, and why a bug in a slice move surfaces immediately in every wide turn
+and rotation built on top of it.
 
-**Live Statistics**
-- Current and best ao5, ao12, ao100
-- Mean, standard deviation, personal bests
-- Scrollable solve history with inline penalty editing and deletion
+The engine exists twice: [`cube_service.py`](backend/app/services/cube_service.py) drives
+the API and the solver, and [`cubeMoves.ts`](frontend/src/utils/cubeMoves.ts) is a port
+that runs in the browser so a keypress turns the cube in the same frame instead of waiting
+on a round trip. The two are kept in sync by cross-checking the TypeScript port against
+the Python engine over every move and a few hundred random sequences.
 
-**Controls**
-- Keyboard-based cube manipulation following standard cubing keybindings (csTimer layout)
-- Full move support — all face moves, primes, doubles, slice moves (M, E, S), and wide moves
+### The solver
 
-## Tech Stack
+Kociemba's two-phase algorithm, via [RubikTwoPhase](https://pypi.org/project/RubikTwoPhase/).
+Rather than searching the full cube group directly, which is intractable, it splits the
+problem:
 
-| Layer | Technology | Role |
-|---|---|---|
-| Frontend | React 18, TypeScript, Vite | UI, cube rendering, timer |
-| Backend | FastAPI (Python) | REST API, cube logic, solver |
-| Database | MongoDB + Motor (async) | Solve records, statistics |
-| Cube Rendering | CSS 3D Transforms | Lightweight 3D display |
-| Solver | Kociemba (Python) | Two-phase optimal solving |
+- **Phase 1** reduces the cube to the subgroup G1 = ⟨U, D, L², R², F², B²⟩, meaning every
+  edge and corner is correctly oriented and the four middle-slice edges sit in the middle
+  slice. Getting to G1 is a much smaller search than solving outright.
+- **Phase 2** solves the cube using only G1 moves, which can never break the orientation
+  achieved in phase 1.
 
-## Project Structure
+Neither phase alone is optimal, but iterating over phase-1 solutions of increasing length
+and re-solving phase 2 converges on solutions under 20 moves fast. Across 150 random
+sequences drawn from all 48 moves it returned a correct solution every time, never longer
+than 20 moves, in at most half a second once the pruning tables are in memory.
 
-```
-RubiksCubeProject/
-├── backend/
-│   ├── app/
-│   │   ├── main.py                 # FastAPI entry point + CORS
-│   │   ├── database.py             # Async MongoDB connection
-│   │   ├── models/                 # Pydantic models
-│   │   │   ├── cube.py             # CubeState, MoveRequest, SolveRequest
-│   │   │   └── solve.py            # SolveRecord, CreateSolveRequest
-│   │   ├── services/               # Business logic
-│   │   │   ├── cube_service.py     # Moves, scrambling, solving, validation
-│   │   │   └── stats_service.py    # ao5/ao12/ao100, mean, std dev
-│   │   └── controllers/            # Route handlers
-│   │       ├── cube_controller.py  # /api/cube/* endpoints
-│   │       └── solve_controller.py # /api/solves/* endpoints
-│   ├── tests/
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/             # React components
-│   │   │   ├── Cube3D.tsx          # 3D cube visualization
-│   │   │   ├── Timer.tsx           # Competition timer
-│   │   │   ├── Statistics.tsx      # Stats panel
-│   │   │   ├── SolveHistory.tsx    # Past solves list
-│   │   │   └── ...
-│   │   ├── hooks/                  # Custom React hooks
-│   │   │   ├── useTimer.ts         # Timer state machine
-│   │   │   ├── useCube.ts          # Cube state management
-│   │   │   └── useKeyboard.ts      # Keybinding handler
-│   │   ├── services/
-│   │   │   └── api.ts              # Backend API client
-│   │   └── types/
-│   │       └── index.ts            # TypeScript type definitions
-│   ├── package.json
-│   └── vite.config.ts
-│
-└── README.md
-```
+The desktop version used the `kociemba` package, which needs a C toolchain to build.
+Swapping in the pure-Python RubikTwoPhase was what made the backend deployable to Render
+without a custom build image.
 
-## Getting Started
+### The part that actually took the time
 
-### Prerequisites
+The solver kept rejecting cubes that were obviously solvable. A single `M'` from a solved
+state — one slice turn, a cube anyone could fix by eye — came back as `Wrong edge and
+corner parity`. That error sends you straight at piece orientation, so that's where I looked:
+counting flipped edges, checking corner twist sums, convincing myself the move engine had
+a bug it didn't have.
 
-- **Python 3.10+**
-- **Node.js 18+** and npm
-- **MongoDB** — locally installed or via Docker
+The move engine was fine. The problem is that Kociemba's facelet string has no way to
+represent orientation. It identifies each face by its center sticker, which means it
+requires the centers to read `URFDLB` in that exact order — the centers *are* the
+coordinate system. Slice moves, wide moves and whole-cube rotations all move centers.
+That's legal on a real cube and unrepresentable in the format, and the solver reports the
+mismatch as a parity error pointing at the pieces rather than at the frame of reference.
+None of the documentation mentions it.
 
-### 1. Start MongoDB
+The fix is to normalize orientation before serializing: rotate the cube until white is
+back on top and green on the front, then prepend those rotations to the returned solution
+so it still applies to the cube the user is actually holding. That's
+[`normalize_orientation()`](backend/app/services/cube_service.py), which searches the 24
+orientations rather than special-casing, and it's why the solver accepts a cube you've
+been rotating freely while you turn it.
 
-Using Docker:
+<!-- Two details here are reconstructed from the debug scripts in git history
+     (test_face_orientation.py, analyze_invalid_state.py) rather than from your memory:
+     that M' was the case you hit first, and that you spent real time down the
+     edge-orientation path before finding it. Correct either if it went differently. -->
+
+### Rendering
+
+The cube renders as a single inline SVG: 54 stickers drawn as four-point polygons at
+hardcoded isometric coordinates, filled from the current state and painted back-to-front
+(`D, B, R, L, U, F`) so the near faces overlap the far ones correctly. The coordinates are
+lifted directly from the `pygame.draw.polygon()` calls in the desktop version, which is
+why the web cube looks pixel-for-pixel like the original.
+
+There is no WebGL, no canvas, and no rendering dependency — the whole component is about
+160 lines, most of it the coordinate table, and a turn is just a re-render with different
+fills.
+
+The tradeoff is that the projection is fixed and turns don't animate: the cube snaps to
+its new state. For a keyboard-driven trainer where turns come faster than an animation
+could play, that's the behavior I'd want anyway, but a real 3D representation is the
+obvious next step if the view ever needs to rotate.
+
+### Three modes
+
+- **Cube** — Keyboard-driven cube manipulation using csTimer-compatible bindings. The
+  timer starts on your first non-rotation move and stops the instant the state is solved,
+  which then records the solve and deals a new scramble.
+- **Timer** — A plain spacebar timer for solves on a physical cube. Hold to arm, with a
+  hold-progress indicator, release to start.
+- **Learn** — A 38-step CFOP tutorial covering notation, the cross, the first two layers,
+  and OLL/PLL. Steps that teach an algorithm are gated: the tutorial reads your actual
+  cube state through validators like `isCrossComplete` and `isOLLComplete` and won't
+  advance until you've genuinely done it. Some steps scramble the cube on entry so you
+  have to recognize the case rather than replay a memorized sequence.
+
+### Timer and stats
+
+Rolling ao5, ao12, ao50 and ao100 computed WCA-style (drop the best and worst, mean the
+rest), plus session mean, standard deviation, personal best, and best ao5/ao12. Solves
+carry editable +2 and DNF penalties that feed back into every average. History is kept in
+localStorage, so the app works with the backend down and there's nothing to sign into.
+
+A handful of people in my cubing circle use it as their daily timer, which has been the
+best bug-reporting channel I could have asked for.
+
+## Stack
+
+| Layer | Tech |
+|---|---|
+| Cube engine | Python (backend), TypeScript port (browser) |
+| Solver | RubikTwoPhase (Kociemba two-phase, pure Python) |
+| API | FastAPI, Uvicorn |
+| Frontend | React 19, TypeScript, Vite |
+| Rendering | Inline SVG |
+| Storage | localStorage; MongoDB (Motor) on the API |
+| Deployment | Render (`render.yaml`) |
+
+## Running it
+
+Requires Python 3.10+ and Node 20+. MongoDB is optional — the API starts without it and
+the frontend keeps its history locally regardless.
 
 ```bash
-docker run -d -p 27017:27017 --name mongodb mongo:latest
-```
+git clone https://github.com/SeanSnaider/RubiksCubeProject
+cd RubiksCubeProject
 
-Or make sure your local `mongod` service is running.
-
-### 2. Start the Backend
-
-```bash
+# Backend — http://localhost:8000 (docs at /docs)
 cd backend
 python -m venv venv
-
-# Activate the virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
+source venv/Scripts/activate        # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
+cp .env.example .env                # defaults are fine for local dev
+uvicorn app.main:app --reload
 
-The API will be available at `http://localhost:8000` with interactive docs at `http://localhost:8000/docs`.
-
-### 3. Start the Frontend
-
-```bash
-cd frontend
+# Frontend — http://localhost:5173
+cd ../frontend
 npm install
+cp .env.example .env
 npm run dev
 ```
 
-The app will open at `http://localhost:5173`.
+The first solve request loads the two-phase pruning tables from `backend/twophase/` and
+takes a few seconds; every request after that is sub-second.
 
-## API Endpoints
+## What I'd do differently
 
-### Cube
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/cube/reset` | Returns a solved cube state |
-| `POST` | `/api/cube/move` | Applies move(s) to a given cube state |
-| `GET` | `/api/cube/scramble` | Generates a random 21-move scramble and resulting state |
-| `POST` | `/api/cube/solve` | Returns a near-optimal solution via Kociemba |
-| `POST` | `/api/cube/validate` | Checks whether a cube state is solvable |
-
-### Solves
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/solves` | List solve records (supports `limit` and `offset`) |
-| `POST` | `/api/solves` | Save a new solve |
-| `DELETE` | `/api/solves/:id` | Delete a solve |
-| `PATCH` | `/api/solves/:id` | Update penalty (+2, DNF, or clear) |
-| `GET` | `/api/solves/stats` | Get calculated statistics (ao5, ao12, ao100, mean, etc.) |
-
-## Controls
-
-Keybinds follow a speedcuber-friendly layout (same as csTimer).
-
-### Face Moves
-
-| Key | Move | | Key | Move |
-|-----|------|-|-----|------|
-| I | R | | K | R' |
-| D | L | | E | L' |
-| J | U | | F | U' |
-| S | D | | L | D' |
-| H | F | | G | F' |
-| W | B | | O | B' |
-
-### Slice Moves
-
-| Key | Move | | Key | Move |
-|-----|------|-|-----|------|
-| 5, 6 | M | | X, . | M' |
-| 2 | E | | 9 | E' |
-| 0 | S | | 1 | S' |
-
-### Wide Moves
-
-| Key | Move | | Key | Move |
-|-----|------|-|-----|------|
-| U | Rw | | M | Rw' |
-| V | Lw | | R | Lw' |
-| , | Uw | | C | Uw' |
-| Z | Dw | | / | Dw' |
-
-### Cube Rotations
-
-| Key | Move | | Key | Move |
-|-----|------|-|-----|------|
-| T, Y | x | | B, N | x' |
-| ; | y | | A | y' |
-| P | z | | Q | z' |
-
-### Timer
-
-| Key | Action |
-|-----|--------|
-| Space (hold) | Start inspection → release to start timer |
-| Any key | Stop timer during solve |
-
-## How the Solver Works
-
-The Kociemba algorithm solves the cube in two phases:
-
-1. **Phase 1** — Reduce the cube to the G1 subgroup, where only half-turn moves on certain faces are needed
-2. **Phase 2** — Solve from the reduced state to completion
-
-This approach finds solutions averaging 18–19 moves, with a maximum of 20.
-
-## Why I Built This
-
-I've been cubing since I was a kid and wanted to create a tool that actually teaches the solving process rather than just showing a solution. Most online solvers dump a move sequence on you — this one makes you learn each stage.
-
-The original Pygame version was my high school senior capstone, built in collaboration with TheCubicle.com. Rebuilding it as a full-stack web app let me apply everything I've learned about software architecture — separating concerns with MVC, building a proper REST API, adding persistent data with MongoDB, and rendering the cube in the browser with CSS 3D transforms instead of a game engine.
-
-## Author
-
-Sean Snaider — [seansnaider.vercel.app](https://seansnaider.vercel.app) · [LinkedIn](https://linkedin.com/in/seansnaider)
+- **The solve endpoint isn't wired into the UI.** `POST /api/cube/solve` works and returns
+  a correct solution in standard notation, but nothing in the frontend calls it, so the
+  headline feature is reachable only through the API. The cube renders as a static SVG,
+  so showing a solution means either stepping through it move by move or building real
+  animation first — which is the honest reason it isn't done yet.
+- **MongoDB is connected but unused.** The solve-history endpoints and the Motor
+  integration are all there, and `utils/api.ts` has typed clients for them, but no
+  component calls them — localStorage does the real work. Either finish the sync or drop
+  the dependency; carrying a database the app never reads is the worst of both.
+- **The move engine still has no tests.** The solver boundary is covered, and the solves
+  controller has a couple of tests that need a live MongoDB to pass, but the engine itself
+  doesn't — despite being the easiest thing in the project to test. It's pure functions
+  with an exact oracle, and there are now two implementations that have to agree. `pytest`
+  also isn't in `requirements.txt`, so running any of it means installing it by hand.

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Cube3D } from './Cube3D'
 import type { CubeState } from '../types'
-import { applyMove } from '../utils/api'
+import { applyMove, applyMoves, getSolvedState } from '../utils/cubeMoves'
 import { KEY_MAP } from '../utils/keymap'
 import {
     isFlowerComplete,
@@ -13,7 +13,7 @@ import {
     isCPLLComplete,
     isCubeSolved,
 } from '../utils/cubeChecks'
-import { fetchScramble } from '../utils/api'
+import { generateScramble } from '../utils/scramble'
 import styles from './LearnMode.module.css'
 
 const TOTAL_STEPS = 42
@@ -425,8 +425,24 @@ interface LearnModeProps {
 export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
     const [step, setStep] = useState(loadStep)
     const [moveLog, setMoveLog] = useState('')
+    // Mirrors cubeState, but also updated synchronously wherever the cube changes.
+    // React batches state updates until the next render, so several keypresses
+    // within one frame would otherwise all read the same stale cube.
     const cubeRef = useRef(cubeState)
     cubeRef.current = cubeState
+
+    /**
+     * Replace the cube with a freshly scrambled one and clear the move log.
+     *
+     * The scramble is generated and applied locally, so there is no wait for
+     * the server before the scrambled cube appears.
+     */
+    const applyScramble = useCallback(() => {
+        const scrambled = applyMoves(getSolvedState(), generateScramble())
+        cubeRef.current = scrambled
+        setCubeState(scrambled)
+        setMoveLog('')
+    }, [setCubeState])
 
     // Persist step
     useEffect(() => {
@@ -441,13 +457,10 @@ export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
     const prevStepRef = useRef(step)
     useEffect(() => {
         if (step !== prevStepRef.current && STEPS[step]?.scrambleOnEnter) {
-            fetchScramble().then(data => {
-                setCubeState(data.state)
-                setMoveLog('')
-            })
+            applyScramble()
         }
         prevStepRef.current = step
-    }, [step, setCubeState])
+    }, [step, applyScramble])
 
     // Keyboard handler
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -456,10 +469,13 @@ export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
         e.preventDefault()
 
         const move = KEY_MAP[e.key]
-        applyMove(cubeRef.current, move).then(newState => {
-            setCubeState(newState)
-            setMoveLog(prev => prev + (prev ? ' ' : '') + move)
-        })
+        // Applied locally and synchronously so the cube turns in the same frame
+        // as the keypress. cubeRef is updated here too, not just on render, so
+        // several keypresses within one frame each build on the previous one.
+        const newState = applyMove(cubeRef.current, move)
+        cubeRef.current = newState
+        setCubeState(newState)
+        setMoveLog(prev => prev + (prev ? ' ' : '') + move)
     }, [active, setCubeState])
 
     useEffect(() => {
@@ -481,23 +497,10 @@ export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
     }
 
     function resetCube() {
-        const solved: CubeState = {
-            U: [['U','U','U'],['U','U','U'],['U','U','U']],
-            D: [['D','D','D'],['D','D','D'],['D','D','D']],
-            L: [['L','L','L'],['L','L','L'],['L','L','L']],
-            R: [['R','R','R'],['R','R','R'],['R','R','R']],
-            F: [['F','F','F'],['F','F','F'],['F','F','F']],
-            B: [['B','B','B'],['B','B','B'],['B','B','B']],
-        }
+        const solved = getSolvedState()
+        cubeRef.current = solved
         setCubeState(solved)
         setMoveLog('')
-    }
-
-    function scramble() {
-        fetchScramble().then(data => {
-            setCubeState(data.state)
-            setMoveLog('')
-        })
     }
 
     const progress = Math.round((step / (STEPS.length - 1)) * 100)
@@ -573,7 +576,7 @@ export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={resetCube}>
                     Reset Cube
                 </button>
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={scramble}>
+                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={applyScramble}>
                     Scramble
                 </button>
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setMoveLog('')}>

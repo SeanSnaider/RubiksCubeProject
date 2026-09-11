@@ -1,11 +1,4 @@
-import type { CubeState } from '../types'
 const base_api = import.meta.env.VITE_API_URL || `http://localhost:8000/api`
-
-export async function fetchScramble() {
-    const response = await fetch(`${base_api}/cube/scramble`)
-    const data = await response.json()
-    return data
-}
 
 export async function saveSolve(timeMs: number, scramble: string, mode: 'cube' | 'timer' = 'cube') {
     const response = await fetch(`${base_api}/solves`, {
@@ -38,14 +31,4 @@ export async function updatePenalty(id: string, penalty: '+2' | 'DNF' | null) {
     })
     if (!response.ok) throw new Error('Failed to update penalty')
     return response.json()
-}
-
-export async function applyMove(state: CubeState, move: string) {
-    const response = await fetch(`${base_api}/cube/move`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: state, moves: move })
-    })
-    const data = await response.json()
-    return data
 }
