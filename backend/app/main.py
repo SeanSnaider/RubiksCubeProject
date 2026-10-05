@@ -16,6 +16,7 @@ import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Connect to MongoDB on startup and disconnect on shutdown."""
     await connect_to_mongo()
     yield
     await close_mongo_connection()
@@ -36,7 +37,7 @@ allowed_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-# In production, add the Vercel frontend URL via environment variable
+# In production, add the deployed frontend's URL (set on Render) via environment variable
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     allowed_origins.append(frontend_url)

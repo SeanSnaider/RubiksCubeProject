@@ -757,5 +757,5 @@ def validate_state(state: dict) -> bool:
     try:
         get_solution(state)
         return True
-    except:
+    except ValueError:
         return False

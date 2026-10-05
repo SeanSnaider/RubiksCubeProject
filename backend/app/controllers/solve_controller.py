@@ -1,13 +1,47 @@
-from fastapi import APIRouter, HTTPException
+"""
+Solve Controller - REST API endpoints for solve history.
+
+CRUD over the `solves` MongoDB collection. Every endpoint returns 503 if the
+server couldn't reach MongoDB at startup (see `get_database()`), and 404 for an
+id that is malformed or doesn't match a solve.
+"""
+from typing import Literal, Optional
+
 from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import APIRouter, HTTPException
+
 from app.database import get_database
 from app.models.solve import SolveRecord, CreateSolveRequest, UpdatePenaltyRequest
 
 router = APIRouter()
 
 
+def parse_solve_id(solve_id: str) -> ObjectId:
+    """Convert a path id to a MongoDB ObjectId.
+
+    Args:
+        solve_id: The id from the URL.
+
+    Returns:
+        The matching ObjectId.
+
+    Raises:
+        HTTPException: 404 if the id isn't a valid ObjectId, since no solve
+            can have it. Without this, bson raises and the client gets a 500.
+    """
+    try:
+        return ObjectId(solve_id)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=404, detail=f"Solve not found: {solve_id}")
+
+
 @router.get("/")
-async def list_solves(limit: int = 100, offset: int = 0, mode: str = None):
+async def list_solves(
+    limit: int = 100,
+    offset: int = 0,
+    mode: Optional[Literal["cube", "timer"]] = None,
+):
     """
     GET /api/solves?limit=100&offset=0&mode=cube
     mode filter: "cube" includes legacy records with no mode field.
@@ -30,16 +64,17 @@ async def list_solves(limit: int = 100, offset: int = 0, mode: str = None):
 async def create_solve(solve: CreateSolveRequest):
     """
     POST /api/solves
-    Body: {"time_ms": 12345, "scramble": "R U R'...", "penalty": null}
+    Body: {"time_ms": 12345, "scramble": "R U R'...", "penalty": null, "mode": "cube"}
+
+    Times under 500 ms are rejected with 422 as misfires.
     """
     db = await get_database()
     record = SolveRecord(
         time_ms=solve.time_ms,
         scramble=solve.scramble,
-        penalty=solve.penalty
+        penalty=solve.penalty,
+        mode=solve.mode,
     )
-    if (solve.time_ms < 500):
-        raise HTTPException(status_code=400, detail="impossible time twin")
     result = await db.solves.insert_one(record.model_dump())
     return {"id": str(result.inserted_id)}
 
@@ -49,10 +84,11 @@ async def delete_solve(solve_id: str):
     """
     DELETE /api/solves/{solve_id}
     """
+    object_id = parse_solve_id(solve_id)
     db = await get_database()
-    result = await db.solves.delete_one({"_id": ObjectId(solve_id)})
-    if (result.deleted_count == 0):
-        raise HTTPException(status_code=404, detail="Solve not found")
+    result = await db.solves.delete_one({"_id": object_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Solve not found: {solve_id}")
     return {"deleted": True}
 
 
@@ -60,16 +96,16 @@ async def delete_solve(solve_id: str):
 async def update_penalty(solve_id: str, request: UpdatePenaltyRequest):
     """
     PATCH /api/solves/{solve_id}
-    Body: {"penalty": "+2"} or {"penalty": null}
+    Body: {"penalty": "+2"}, {"penalty": "DNF"} or {"penalty": null}
+
+    An unknown penalty is rejected with 422 by the request model.
     """
-    penalty = request.penalty
-    if (not (penalty == "+2" or penalty is None or penalty == "DNF")):
-        raise HTTPException(status_code=400, detail="invalid penalty")
+    object_id = parse_solve_id(solve_id)
     db = await get_database()
     result = await db.solves.update_one(
-        {"_id": ObjectId(solve_id)},
-        {"$set": {"penalty": penalty}}
+        {"_id": object_id},
+        {"$set": {"penalty": request.penalty}}
     )
-    if (result.matched_count == 0):
-        raise HTTPException(status_code=404, detail="unable to delete, invalid sovle id")
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"Solve not found: {solve_id}")
     return {"updated": True}

@@ -8,6 +8,7 @@ FastAPI can handle other requests.
 This module uses the Singleton pattern - we create one database connection
 that's shared across all requests.
 """
+from fastapi import HTTPException
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional
 import os
@@ -25,6 +26,9 @@ class Database:
     across the application lifetime.
     """
     client: Optional[AsyncIOMotorClient] = None
+    # Set once the startup ping succeeds. Motor connects lazily, so a client
+    # existing says nothing about whether the server is reachable.
+    available: bool = False
 
 
 # Global database instance
@@ -48,8 +52,10 @@ async def connect_to_mongo():
     # Verify connection works
     try:
         await db.client.admin.command('ping')
+        db.available = True
         print("Successfully connected to MongoDB!")
     except Exception as e:
+        db.available = False
         print(f"Failed to connect to MongoDB: {e}")
         print("Server will start without database - solve tracking unavailable")
 
@@ -72,7 +78,17 @@ async def get_database():
 
         db = await get_database()
         result = await db.solves.find_one({"_id": some_id})
+
+    Raises:
+        HTTPException: 503 if MongoDB was unreachable at startup. Without this
+            check every request would hang for the driver's server-selection
+            timeout and then fail with an opaque 500.
     """
+    if db.client is None or not db.available:
+        raise HTTPException(
+            status_code=503,
+            detail="Solve history is unavailable: the server could not connect to MongoDB",
+        )
     return db.client[DATABASE_NAME]
 
 
