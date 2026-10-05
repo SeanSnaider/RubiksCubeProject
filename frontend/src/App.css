@@ -30,6 +30,15 @@
   overflow-y: auto;
 }
 
+/* Wrapper for a mode that stays mounted while hidden (see App.tsx). */
+.mode-pane {
+  width: 100%;
+}
+
+.mode-pane[hidden] {
+  display: none;
+}
+
 /* Help text shown in the sidebar for modes without solve history. */
 .sidebar-help {
   padding: var(--space-3);

@@ -1,13 +1,15 @@
-import type { CubeState, Color } from '../types';
-
-const COLOR_MAP: Record<Color, string> = {
-  U: '#FFFFFF', // White
-  D: '#FFFF00', // Yellow
-  L: '#FFA500', // Orange
-  R: '#FF0000', // Red
-  F: '#00FF00', // Green
-  B: '#0000FF', // Blue
-};
+/**
+ * Fixed-perspective "3D" view of the cube, drawn as an inline SVG.
+ *
+ * The 54 stickers are four-point polygons at hardcoded coordinates lifted
+ * from the original Pygame version, painted back-to-front so nearer faces
+ * cover farther ones. The top, front and the edges of the left and right
+ * faces are visible; use `CubeNet` when every sticker needs to be seen.
+ *
+ * Props: `state` — the cube to draw. Renders only; no state or side effects.
+ */
+import type { CubeState } from '../types';
+import { STICKER_FILL } from '../utils/colors';
 
 // Each sticker is 4 corner points [x,y] — ported directly from Pygame draw.polygon() calls
 // Organized as FACE_POLYGONS[face][row][col] = [[x,y], [x,y], [x,y], [x,y]]
@@ -134,14 +136,24 @@ const FACE_POLYGONS: Record<string, StickerPolygon[][]> = {
 // Back faces first, front faces last — same order as original Pygame
 const RENDER_ORDER: (keyof CubeState)[] = ['D', 'B', 'R', 'L', 'U', 'F'];
 
+/** Props for {@link Cube3D}. */
 interface Cube3DProps {
+  /** The cube to draw. */
   state: CubeState;
 }
 
+/**
+ * Render the cube.
+ *
+ * @param props - See {@link Cube3DProps}.
+ * @returns An SVG of the cube.
+ */
 export function Cube3D({ state }: Cube3DProps) {
   return (
     <svg
       viewBox="0 0 484 530"
+      role="img"
+      aria-label="Cube"
       style={{ width: '400px', height: '440px', display: 'block', margin: '0 auto' }}
     >
       {RENDER_ORDER.map((face) =>
@@ -150,7 +162,7 @@ export function Cube3D({ state }: Cube3DProps) {
             <polygon
               key={`${face}-${r}-${c}`}
               points={points.map(([x, y]) => `${x},${y}`).join(' ')}
-              fill={COLOR_MAP[state[face][r][c]]}
+              fill={STICKER_FILL[state[face][r][c]]}
               strokeWidth="3"
             />
           ))

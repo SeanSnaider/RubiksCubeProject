@@ -1,0 +1,191 @@
+/* Shared by SolveMode, CubeEntry and SolutionStepper. Buttons match LearnMode. */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-4);
+}
+
+.panel {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.instructions {
+  width: 100%;
+  max-width: 640px;
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  padding: var(--space-3) var(--space-4);
+  line-height: 1.6;
+  font-size: 0.95em;
+}
+
+.instructions p {
+  margin: 0;
+}
+
+.heading {
+  font-size: 1.1em;
+  color: var(--accent);
+  margin-bottom: var(--space-2);
+}
+
+.problems {
+  width: 100%;
+  max-width: 640px;
+  background: rgba(255, 68, 68, 0.1);
+  border-left: 3px solid var(--danger);
+  border-radius: 6px;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.9em;
+}
+
+.problems ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+}
+
+.problemsTitle {
+  font-weight: 700;
+  color: var(--danger);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.btn {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--accent);
+  opacity: 0.85;
+}
+
+.btnSecondary {
+  background: var(--bg-sidebar);
+  color: var(--text-muted);
+}
+
+.btnSecondary:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+}
+
+.status {
+  font-size: 0.8em;
+  color: var(--text-dim);
+}
+
+.statusError {
+  color: var(--danger);
+}
+
+/* ── Solution stepper ─────────────────────────────────────────────────── */
+
+.current {
+  width: 100%;
+  max-width: 640px;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.currentLabel {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.currentMove {
+  font-family: 'Courier New', monospace;
+  font-size: 2.4em;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--accent);
+}
+
+.currentText {
+  font-size: 0.9em;
+}
+
+.currentDone {
+  font-size: 1.3em;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.moveList {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: 640px;
+}
+
+.moveChip {
+  min-width: 40px;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 0.95em;
+  padding: var(--space-1) var(--space-2);
+}
+
+.moveDone {
+  color: var(--text-dim);
+  background: transparent;
+  text-decoration: line-through;
+}
+
+.moveNext {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.views {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-5);
+}

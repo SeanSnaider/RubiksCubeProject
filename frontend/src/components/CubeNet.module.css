@@ -1,0 +1,67 @@
+/* Unfolded cube net: four columns of faces, three rows (see CubeNet.tsx). */
+
+.net {
+  --sticker-size: 34px;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  grid-template-rows: repeat(3, auto);
+  gap: var(--space-2);
+  justify-content: center;
+}
+
+.face {
+  display: grid;
+  grid-template-columns: repeat(3, var(--sticker-size));
+  grid-template-rows: repeat(3, var(--sticker-size));
+  gap: 3px;
+  padding: 3px;
+  background-color: #000;
+  border-radius: 6px;
+}
+
+.sticker {
+  width: var(--sticker-size);
+  height: var(--sticker-size);
+  border-radius: 4px;
+  border: none;
+  padding: 0;
+}
+
+.editable {
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.editable:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px var(--accent);
+  /* Override the global button hover background so the sticker keeps its color. */
+  border-color: transparent;
+}
+
+.blank {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0 4px,
+    rgba(255, 255, 255, 0.06) 4px 8px
+  );
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Sized so the longest label ("Bottom") fits inside the sticker. */
+  font-size: calc(var(--sticker-size) * 0.22);
+  font-weight: 700;
+  text-transform: uppercase;
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+}
+
+@media (max-width: 1100px) {
+  .net {
+    --sticker-size: 26px;
+  }
+}

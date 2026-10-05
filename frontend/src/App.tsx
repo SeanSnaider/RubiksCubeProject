@@ -7,16 +7,18 @@
  *           on the first turn and stops when the cube is solved.
  * - Timer — spacebar timer for solves on a physical cube.
  * - Learn — guided beginner tutorial (`LearnMode`).
+ * - Solve — enter a physical cube's colors and follow a computed solution
+ *           (`SolveMode`).
  *
- * Cube mode's state lives here. Learn mode's cube is lifted here too, so
- * switching tabs never loses work.
+ * Cube mode's state lives here. Learn mode's cube is lifted here too, and
+ * Solve mode stays mounted while hidden, so switching tabs never loses work.
  *
  * Side effects: listens on `window` for Cube mode's move keys; reads and
  * writes solve history in localStorage (via `timerStorage`).
  */
 import './App.css'
 import { Cube3D } from './components/Cube3D'
-import type { CubeState, Solve } from './types'
+import type { AppMode, CubeState, Solve } from './types'
 import { Timer } from './components/Timer'
 import { ScrambleBar } from './components/ScrambleBar'
 import { StatsPanel } from './components/StatsPanel'
@@ -26,6 +28,7 @@ import { KeyboardHelp } from './components/KeyboardHelp'
 import { ModeToggle } from './components/ModeToggle'
 import { SpacebarTimer } from './components/SpacebarTimer'
 import { LearnMode } from './components/LearnMode'
+import { SolveMode } from './components/SolveMode'
 import { generateScramble } from './utils/scramble'
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { applyMove, applyMoves, getSolvedState } from './utils/cubeMoves'
@@ -56,7 +59,7 @@ const SOLVED_PAUSE_MS = 800
  * @returns The sidebar, the active mode's main view, and the keyboard help button.
  */
 function App() {
-    const [mode, setMode] = useState<'cube' | 'timer' | 'learn'>('cube')
+    const [mode, setMode] = useState<AppMode>('cube')
 
     // ── Learn mode ───────────────────────────────────────────────────────
     const [learnCubeState, setLearnCubeState] = useState<CubeState>(solvedCube)
@@ -249,6 +252,18 @@ function App() {
                         <div className="sidebar-help-gap">Press <b>?</b> (bottom right) for every key.</div>
                     </div>
                 )}
+                {mode === 'solve' && (
+                    <div className="sidebar-help">
+                        <h3>How Solve mode works</h3>
+                        <ol>
+                            <li>Hold your cube with white on top and green facing you.</li>
+                            <li>Pick a color (or press 1–6), then click stickers to match your cube. Press 0 for the eraser.</li>
+                            <li>Click <b>Solve</b>. The color counts and every piece are checked first, so a typo gets pointed out instead of a wrong answer.</li>
+                            <li>Do each move on your cube, then press <b>Next</b> (or →).</li>
+                        </ol>
+                        <p>Solutions use Kociemba's two-phase algorithm and run entirely in your browser, typically in about 20 moves.</p>
+                    </div>
+                )}
             </div>
 
             <div className="main-content">
@@ -275,6 +290,10 @@ function App() {
                         active={mode === 'learn'}
                     />
                 )}
+                {/* Kept mounted while hidden so an entered cube survives tab switches. */}
+                <div className="mode-pane" hidden={mode !== 'solve'}>
+                    <SolveMode active={mode === 'solve'} />
+                </div>
             </div>
 
             <KeyboardHelp />
