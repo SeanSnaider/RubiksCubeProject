@@ -1,49 +1,64 @@
-import { useState, useRef, useCallback } from 'react'
+/**
+ * Stopwatch hook used by Cube mode, driven by `requestAnimationFrame`.
+ *
+ * The timer is started and stopped imperatively (by the first move and by the
+ * solving move), and `timeMs` re-renders the display every frame while running.
+ */
+import { useState, useRef, useCallback, useEffect } from 'react'
 
-type TimerState = 'idle' | 'running' | 'stopped'
+/** Lifecycle of the stopwatch. */
+export type TimerState = 'idle' | 'running' | 'stopped'
 
-// the hook for this wubiks cubix
+/**
+ * Provide a start/stop/reset stopwatch.
+ *
+ * @returns `timeMs` (elapsed time to display), `timerState`, and the
+ *   `start`, `stop` and `reset` controls. `stop()` returns the exact final time,
+ *   which is what should be recorded: `timeMs` may lag it by up to one frame.
+ */
 export function useTimer() {
+    const [timeMs, setTimeMs] = useState<number>(0)
+    const [timerState, setTimerState] = useState<TimerState>('idle')
 
-    const [timeMs, setTimeMs] = useState<number>(0);
-    const [timerState, setTimerState] = useState<TimerState>('idle'); 
+    const startTimeRef = useRef<number>(0)
+    const animationFrameRef = useRef<number>(0)
 
-    // starting constant values
-    const startTimeRef = useRef<number>(0);
-    const animationFrameRef = useRef<number>(0);
-
-    // tick function (useCallback)
-    const tick = useCallback(() => {
-        let elapsed: number = performance.now() - startTimeRef.current
-        setTimeMs(elapsed)
-
-        // continue looping through the project
-        animationFrameRef.current = requestAnimationFrame(tick)
-    }, []);
-
-    // start function (useCallback)
+    /** Start (or restart) timing from zero. */
     const start = useCallback(() => {
+        cancelAnimationFrame(animationFrameRef.current)
         startTimeRef.current = performance.now()
         setTimerState('running')
         setTimeMs(0)
 
-        // start the loop
+        const tick = () => {
+            setTimeMs(performance.now() - startTimeRef.current)
+            animationFrameRef.current = requestAnimationFrame(tick)
+        }
         animationFrameRef.current = requestAnimationFrame(tick)
-    }, [tick])
-
-    // stop function (useCallback)
-    const stop = useCallback(() => {
-        cancelAnimationFrame(animationFrameRef.current)
-        setTimerState('stopped')
     }, [])
 
-    // reset function (useCallback)
+    /**
+     * Stop timing and freeze the display on the final time.
+     *
+     * @returns The elapsed time in milliseconds.
+     */
+    const stop = useCallback((): number => {
+        cancelAnimationFrame(animationFrameRef.current)
+        const elapsed = performance.now() - startTimeRef.current
+        setTimeMs(elapsed)
+        setTimerState('stopped')
+        return elapsed
+    }, [])
+
+    /** Stop timing and clear the display back to zero. */
     const reset = useCallback(() => {
         cancelAnimationFrame(animationFrameRef.current)
         setTimerState('idle')
         setTimeMs(0)
     }, [])
 
-    // return statement
-    return { timeMs, timerState, start, stop, reset };
+    // Don't leave an animation loop running after unmount.
+    useEffect(() => () => cancelAnimationFrame(animationFrameRef.current), [])
+
+    return { timeMs, timerState, start, stop, reset }
 }

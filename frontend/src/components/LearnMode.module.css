@@ -108,6 +108,11 @@
     transition: background 0.15s, opacity 0.15s;
 }
 
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .btnPrimary {
     background: var(--accent);
     color: #fff;
@@ -115,11 +120,6 @@
 
 .btnPrimary:hover {
     opacity: 0.85;
-}
-
-.btnPrimary:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
 }
 
 .btnSecondary {

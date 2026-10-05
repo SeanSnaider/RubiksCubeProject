@@ -1,3 +1,10 @@
+/**
+ * Typed clients for the backend's solve-history endpoints (`/api/solves`).
+ *
+ * Not currently called by any component: solve history lives in localStorage
+ * (see `timerStorage.ts`). Kept for a future server-sync feature. Every
+ * function throws on a non-2xx response.
+ */
 const base_api = import.meta.env.VITE_API_URL || `http://localhost:8000/api`
 
 export async function saveSolve(timeMs: number, scramble: string, mode: 'cube' | 'timer' = 'cube') {
@@ -6,15 +13,15 @@ export async function saveSolve(timeMs: number, scramble: string, mode: 'cube' |
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ time_ms: timeMs, scramble: scramble, mode })
     })
-    const data = await response.json()
-    return data
+    if (!response.ok) throw new Error(`Failed to save solve (HTTP ${response.status})`)
+    return response.json()
 }
 
 export async function fetchSolves(mode?: 'cube' | 'timer') {
     const url = mode ? `${base_api}/solves?mode=${mode}` : `${base_api}/solves`
     const response = await fetch(url)
-    const data = await response.json()
-    return data
+    if (!response.ok) throw new Error(`Failed to fetch solves (HTTP ${response.status})`)
+    return response.json()
 }
 
 export async function deleteSolve(id: string) {

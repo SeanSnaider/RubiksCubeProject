@@ -1,9 +1,25 @@
+/**
+ * Hold-to-arm spacebar timer for Timer mode (solves on a physical cube).
+ *
+ * Holding Space for `HOLD_MS` arms the timer; releasing starts it; pressing
+ * Space again stops it and saves the time; one more press resets the display.
+ * Releasing early cancels the hold.
+ */
 import { useState, useRef, useCallback, useEffect } from 'react'
 
 export type SpaceTimerState = 'idle' | 'holding' | 'ready' | 'running' | 'stopped'
 
 const HOLD_MS = 3000
 
+/**
+ * Drive the spacebar timer.
+ *
+ * @param enabled - Whether Timer mode is active. Key events are ignored and the
+ *   timer resets while false.
+ * @param onSave - Called with the final time in milliseconds when a solve stops.
+ * @returns `spaceState`, the elapsed `timeMs`, and `holdProgress` (0–1) for the
+ *   arming ring.
+ */
 export function useSpacebarTimer(enabled: boolean, onSave: (timeMs: number) => void) {
     const [spaceState, setSpaceStateRaw] = useState<SpaceTimerState>('idle')
     const [timeMs, setTimeMs] = useState(0)
@@ -20,23 +36,13 @@ export function useSpacebarTimer(enabled: boolean, onSave: (timeMs: number) => v
     const onSaveRef = useRef(onSave)
     useEffect(() => { onSaveRef.current = onSave }, [onSave])
 
+    /** Update the state and its synchronous ref together. */
     function setState(s: SpaceTimerState) {
         stateRef.current = s
         setSpaceStateRaw(s)
     }
 
-    function holdTick() {
-        setHoldMs(performance.now() - holdStartRef.current)
-        holdRafRef.current = requestAnimationFrame(holdTick)
-    }
-
-    function runTick() {
-        const elapsed = performance.now() - startTimeRef.current
-        setTimeMs(elapsed)
-        finalTimeRef.current = elapsed
-        rafRef.current = requestAnimationFrame(runTick)
-    }
-
+    /** Abort an in-progress hold and clear the arming ring. */
     function cancelHold() {
         if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current)
         cancelAnimationFrame(holdRafRef.current)
@@ -47,8 +53,16 @@ export function useSpacebarTimer(enabled: boolean, onSave: (timeMs: number) => v
         if (!enabled || e.code !== 'Space' || e.repeat) return
         e.preventDefault()
 
+        // Space would otherwise also "click" whichever button was last clicked
+        // (a penalty toggle or Delete in the solve list) when the key is released.
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+
         const s = stateRef.current
         if (s === 'idle') {
+            const holdTick = () => {
+                setHoldMs(performance.now() - holdStartRef.current)
+                holdRafRef.current = requestAnimationFrame(holdTick)
+            }
             holdStartRef.current = performance.now()
             holdRafRef.current = requestAnimationFrame(holdTick)
             holdTimeoutRef.current = setTimeout(() => {
@@ -76,6 +90,12 @@ export function useSpacebarTimer(enabled: boolean, onSave: (timeMs: number) => v
             cancelHold()
             setState('idle')
         } else if (s === 'ready') {
+            const runTick = () => {
+                const elapsed = performance.now() - startTimeRef.current
+                setTimeMs(elapsed)
+                finalTimeRef.current = elapsed
+                rafRef.current = requestAnimationFrame(runTick)
+            }
             cancelHold()
             startTimeRef.current = performance.now()
             setTimeMs(0)
@@ -85,7 +105,10 @@ export function useSpacebarTimer(enabled: boolean, onSave: (timeMs: number) => v
         }
     }, [enabled])
 
+    // Listen only while enabled. Leaving Timer mode runs the cleanup, which
+    // also abandons any hold or run in progress so the timer comes back idle.
     useEffect(() => {
+        if (!enabled) return
         window.addEventListener('keydown', handleKeyDown)
         window.addEventListener('keyup', handleKeyUp)
         return () => {
@@ -94,20 +117,11 @@ export function useSpacebarTimer(enabled: boolean, onSave: (timeMs: number) => v
             cancelAnimationFrame(rafRef.current)
             cancelAnimationFrame(holdRafRef.current)
             if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current)
-        }
-    }, [handleKeyDown, handleKeyUp])
-
-    // Reset state when disabled (mode switch)
-    useEffect(() => {
-        if (!enabled) {
-            cancelAnimationFrame(rafRef.current)
-            cancelAnimationFrame(holdRafRef.current)
-            if (holdTimeoutRef.current) clearTimeout(holdTimeoutRef.current)
             setState('idle')
             setTimeMs(0)
             setHoldMs(0)
         }
-    }, [enabled])
+    }, [enabled, handleKeyDown, handleKeyUp])
 
     return {
         spaceState,

@@ -22,16 +22,41 @@
   overflow: hidden;
 }
 
-.sidebar-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-3);
-}
-
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   overflow-y: auto;
+}
+
+/* Help text shown in the sidebar for modes without solve history. */
+.sidebar-help {
+  padding: var(--space-3);
+  color: var(--text-muted);
+  font-size: 0.85em;
+  line-height: 1.6;
+  overflow-y: auto;
+}
+
+.sidebar-help h3 {
+  color: var(--accent);
+  margin: 0 0 var(--space-2);
+}
+
+.sidebar-help ol {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.sidebar-help li {
+  margin-bottom: var(--space-2);
+}
+
+.sidebar-help p {
+  margin: 0;
+}
+
+.sidebar-help-gap {
+  margin-top: var(--space-2);
 }

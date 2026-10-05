@@ -1,3 +1,19 @@
+/**
+ * Root component: the sidebar (mode tabs, stats, solve history) and the main
+ * area for whichever mode is active.
+ *
+ * Modes:
+ * - Cube  — solve a scrambled virtual cube with the keyboard; the timer starts
+ *           on the first turn and stops when the cube is solved.
+ * - Timer — spacebar timer for solves on a physical cube.
+ * - Learn — guided beginner tutorial (`LearnMode`).
+ *
+ * Cube mode's state lives here. Learn mode's cube is lifted here too, so
+ * switching tabs never loses work.
+ *
+ * Side effects: listens on `window` for Cube mode's move keys; reads and
+ * writes solve history in localStorage (via `timerStorage`).
+ */
 import './App.css'
 import { Cube3D } from './components/Cube3D'
 import type { CubeState, Solve } from './types'
@@ -18,6 +34,7 @@ import {
     getCubeSolves, addCubeSolve, removeCubeSolve, setCubePenalty,
 } from './utils/timerStorage'
 import { KEY_MAP } from './utils/keymap'
+import { shouldIgnoreShortcut } from './utils/keyboard'
 import { useTimer } from './hooks/useTimer'
 import { useSpacebarTimer } from './hooks/useSpacebarTimer'
 import { isSolved } from './utils/isSolved'
@@ -33,6 +50,11 @@ const ROTATION_MOVES = new Set(['x', "x'", 'x2', 'y', "y'", 'y2', 'z', "z'", 'z2
 // pause has to be deliberate or the solve would never be seen.
 const SOLVED_PAUSE_MS = 800
 
+/**
+ * Render the whole app.
+ *
+ * @returns The sidebar, the active mode's main view, and the keyboard help button.
+ */
 function App() {
     const [mode, setMode] = useState<'cube' | 'timer' | 'learn'>('cube')
 
@@ -41,16 +63,18 @@ function App() {
 
     // ── Cube mode ──────────────────────────────────────────────────────────
     const { timeMs, timerState, start, stop, reset } = useTimer()
-    const [scramble, setScramble] = useState<string>(generateScramble())
-    const [cubeState, setCubeState] = useState<CubeState>(solvedCube)
+    // The first scramble and the cube it produces are created together, so the
+    // cube on screen always matches the scramble shown above it.
+    const [initialScramble] = useState(generateScramble)
+    const [scramble, setScramble] = useState<string>(initialScramble)
+    const [cubeState, setCubeState] = useState<CubeState>(() => applyMoves(solvedCube, initialScramble))
     const [cubeSolves, setCubeSolves] = useState<Solve[]>(() => getCubeSolves())
 
-    // Ref so the keydown closure always sees the latest timerState without re-registering
+    // Ref so the keydown closure always sees the latest timerState without
+    // re-registering. Also written synchronously on start, so two keypresses in
+    // the same frame don't both try to start the timer.
     const timerStateRef = useRef(timerState)
     useEffect(() => { timerStateRef.current = timerState }, [timerState])
-
-    const timeMsRef = useRef(timeMs)
-    useEffect(() => { timeMsRef.current = timeMs }, [timeMs])
 
     const scrambleRef = useRef(scramble)
     useEffect(() => { scrambleRef.current = scramble }, [scramble])
@@ -65,28 +89,39 @@ function App() {
      *
      * @param next - The state to display. Always a fresh object, never mutated.
      */
-    function commitCubeState(next: CubeState) {
+    const commitCubeState = useCallback((next: CubeState) => {
         cubeStateRef.current = next
         setCubeState(next)
-    }
+    }, [])
 
+    /** Reload Cube mode's history from storage after it changes. */
     function refreshCubeSolves() {
         setCubeSolves(getCubeSolves())
     }
 
-    // Pending post-solve scramble, so it can be cancelled if the app unmounts first
+    // Pending post-solve scramble. While it is set the solved cube is on show
+    // and move keys are ignored, so a stray keypress can't unsolve it.
     const nextScrambleTimeoutRef = useRef<number | null>(null)
 
-    function newScramble() {
-        nextScrambleTimeoutRef.current = null
+    /**
+     * Deal a new scramble. Abandons an attempt in progress, so its time isn't
+     * carried over into the next solve.
+     */
+    const newScramble = useCallback(() => {
+        if (nextScrambleTimeoutRef.current !== null) {
+            clearTimeout(nextScrambleTimeoutRef.current)
+            nextScrambleTimeoutRef.current = null
+        }
+        if (timerStateRef.current === 'running') reset()
         const next = generateScramble()
         setScramble(next)
         commitCubeState(applyMoves(solvedCube, next))
-    }
+    }, [commitCubeState, reset])
 
     // ── Timer mode ─────────────────────────────────────────────────────────
     const [timerSolves, setTimerSolves] = useState<Solve[]>(() => getTimerSolves())
 
+    /** Reload Timer mode's history from storage after it changes. */
     function refreshTimerSolves() {
         setTimerSolves(getTimerSolves())
     }
@@ -102,6 +137,11 @@ function App() {
     )
 
     // ── Shared delete / penalty ────────────────────────────────────────────
+    /**
+     * Delete a solve from the active mode's history.
+     *
+     * @param id - The solve's id.
+     */
     function handleDelete(id: string) {
         if (mode === 'cube') {
             removeCubeSolve(id)
@@ -112,6 +152,12 @@ function App() {
         }
     }
 
+    /**
+     * Set or clear a penalty on a solve in the active mode's history.
+     *
+     * @param id - The solve's id.
+     * @param penalty - The new penalty, or null to clear it.
+     */
     function handlePenalty(id: string, penalty: '+2' | 'DNF' | null) {
         if (mode === 'cube') {
             setCubePenalty(id, penalty)
@@ -124,16 +170,21 @@ function App() {
 
     // ── Cube keyboard handler ──────────────────────────────────────────────
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
-        if (mode !== 'cube') return
+        if (mode !== 'cube' || shouldIgnoreShortcut(event)) return
         if (!(event.key in KEY_MAP)) return
 
         event.preventDefault()
+        // Showing off a just-solved cube; the next scramble is on its way.
+        if (nextScrambleTimeoutRef.current !== null) return
+
         const move = KEY_MAP[event.key]
         const isRotation = ROTATION_MOVES.has(move)
 
-        if (!isRotation) {
-            if (timerStateRef.current === 'idle') start()
-            if (timerStateRef.current === 'stopped') reset()
+        // Any turn starts a fresh attempt unless one is already being timed,
+        // including the first turn after a finished solve.
+        if (!isRotation && timerStateRef.current !== 'running') {
+            start()
+            timerStateRef.current = 'running'
         }
 
         // Applied locally and synchronously so the cube turns in the same frame
@@ -142,13 +193,14 @@ function App() {
         commitCubeState(newState)
 
         if (!isRotation && isSolved(newState)) {
-            stop()
-            addCubeSolve(timeMsRef.current, scrambleRef.current)
+            const finalMs = stop()
+            timerStateRef.current = 'stopped'
+            addCubeSolve(Math.round(finalMs), scrambleRef.current)
             refreshCubeSolves()
             // Leave the solved cube up briefly before scrambling it again.
             nextScrambleTimeoutRef.current = window.setTimeout(newScramble, SOLVED_PAUSE_MS)
         }
-    }, [mode, start, stop, reset])
+    }, [mode, start, stop, commitCubeState, newScramble])
 
     // Don't scramble a cube that is no longer mounted
     useEffect(() => () => {
@@ -165,12 +217,13 @@ function App() {
     // ── Render ─────────────────────────────────────────────────────────────
     const solves = mode === 'cube' ? cubeSolves : timerSolves
     const lastSolve = cubeSolves[0] ?? null
+    const showsHistory = mode === 'cube' || mode === 'timer'
 
     return (
         <div className="app-layout">
             <div className="sidebar" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
                 <ModeToggle mode={mode} onChange={setMode} />
-                {mode !== 'learn' && (
+                {showsHistory && (
                     <>
                         <StatsPanel solves={solves} />
                         <TimeGraph solves={solves} />
@@ -182,23 +235,24 @@ function App() {
                     </>
                 )}
                 {mode === 'learn' && (
-                    <div style={{ padding: 'var(--space-3)', color: 'var(--text-muted)', fontSize: '0.85em', lineHeight: 1.6 }}>
-                        <h3 style={{ color: 'var(--accent)', margin: '0 0 var(--space-2)' }}>Keyboard Controls</h3>
+                    <div className="sidebar-help">
+                        <h3>Keyboard Controls</h3>
                         <div><b>R / R'</b> — i / k</div>
                         <div><b>L / L'</b> — d / e</div>
                         <div><b>U / U'</b> — j / f</div>
                         <div><b>F / F'</b> — h / g</div>
                         <div><b>D / D'</b> — s / l</div>
                         <div><b>B / B'</b> — w / o</div>
-                        <div style={{ marginTop: 'var(--space-2)' }}><b>x / x'</b> — t / b</div>
+                        <div className="sidebar-help-gap"><b>x / x'</b> — t / b</div>
                         <div><b>y / y'</b> — ; / a</div>
                         <div><b>z / z'</b> — p / q</div>
+                        <div className="sidebar-help-gap">Press <b>?</b> (bottom right) for every key.</div>
                     </div>
                 )}
             </div>
 
             <div className="main-content">
-                {mode === 'cube' ? (
+                {mode === 'cube' && (
                     <>
                         <ScrambleBar scramble={scramble} onNewScramble={newScramble} />
                         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -206,13 +260,15 @@ function App() {
                             <Timer time_ms={timeMs} timerState={timerState} lastSolve={lastSolve} />
                         </div>
                     </>
-                ) : mode === 'timer' ? (
+                )}
+                {mode === 'timer' && (
                     <SpacebarTimer
                         spaceState={spaceState}
                         timeMs={spaceTimeMs}
                         holdProgress={holdProgress}
                     />
-                ) : (
+                )}
+                {mode === 'learn' && (
                     <LearnMode
                         cubeState={learnCubeState}
                         setCubeState={setLearnCubeState}

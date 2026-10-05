@@ -1,8 +1,21 @@
+/**
+ * Learn mode: a guided, step-by-step beginner's (layer-by-layer) tutorial.
+ *
+ * Teaches notation and then each stage of the solve: flower, cross, first
+ * layer corners, second layer, yellow cross, orienting and permuting the last
+ * layer. Steps with a `gateCheck` read the live cube state and won't advance
+ * until the user has actually done that stage; steps with `scrambleOnEnter`
+ * deal a fresh scramble so the user has to recognize the case.
+ *
+ * Side effects: listens on `window` for move keys while active, and saves the
+ * current step to localStorage so a returning user resumes where they left off.
+ */
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Cube3D } from './Cube3D'
 import type { CubeState } from '../types'
 import { applyMove, applyMoves, getSolvedState } from '../utils/cubeMoves'
 import { KEY_MAP } from '../utils/keymap'
+import { shouldIgnoreShortcut } from '../utils/keyboard'
 import {
     isFlowerComplete,
     isCrossComplete,
@@ -15,8 +28,6 @@ import {
 } from '../utils/cubeChecks'
 import { generateScramble } from '../utils/scramble'
 import styles from './LearnMode.module.css'
-
-const TOTAL_STEPS = 42
 
 interface Step {
     phase: string
@@ -408,11 +419,17 @@ const STEPS: Step[] = [
 
 const STORAGE_KEY = 'rubiks_learn_step'
 
+/**
+ * Restore the tutorial step saved by a previous visit.
+ *
+ * @returns The saved step, clamped to the steps that exist, or 0 if nothing
+ *   valid was saved or storage is unavailable.
+ */
 function loadStep(): number {
     try {
-        const v = localStorage.getItem(STORAGE_KEY)
-        if (v !== null) return Math.min(Number(v), TOTAL_STEPS - 1)
-    } catch { /* ignore */ }
+        const saved = Number(localStorage.getItem(STORAGE_KEY))
+        if (Number.isInteger(saved)) return Math.max(0, Math.min(saved, STEPS.length - 1))
+    } catch { /* storage unavailable (e.g. private browsing): start from the beginning */ }
     return 0
 }
 
@@ -429,7 +446,7 @@ export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
     // React batches state updates until the next render, so several keypresses
     // within one frame would otherwise all read the same stale cube.
     const cubeRef = useRef(cubeState)
-    cubeRef.current = cubeState
+    useEffect(() => { cubeRef.current = cubeState }, [cubeState])
 
     /**
      * Replace the cube with a freshly scrambled one and clear the move log.
@@ -446,25 +463,18 @@ export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
 
     // Persist step
     useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, String(step))
+        try {
+            localStorage.setItem(STORAGE_KEY, String(step))
+        } catch { /* storage unavailable: progress just won't be remembered */ }
     }, [step])
 
     const currentStep = STEPS[Math.min(step, STEPS.length - 1)]
     const gateCheck = currentStep.gateCheck
     const gatePass = gateCheck ? gateCheck(cubeState) : true
 
-    // Auto-scramble on entering a step that requests it
-    const prevStepRef = useRef(step)
-    useEffect(() => {
-        if (step !== prevStepRef.current && STEPS[step]?.scrambleOnEnter) {
-            applyScramble()
-        }
-        prevStepRef.current = step
-    }, [step, applyScramble])
-
     // Keyboard handler
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (!active) return
+        if (!active || shouldIgnoreShortcut(e)) return
         if (!(e.key in KEY_MAP)) return
         e.preventDefault()
 
@@ -483,19 +493,34 @@ export function LearnMode({ cubeState, setCubeState, active }: LearnModeProps) {
         return () => window.removeEventListener('keydown', handleKeyDown)
     }, [handleKeyDown])
 
+    /**
+     * Move to a tutorial step, dealing a fresh scramble if that step asks for one.
+     *
+     * @param target - The step to show; ignored if out of range.
+     */
+    function goToStep(target: number) {
+        if (target < 0 || target >= STEPS.length) return
+        setStep(target)
+        if (STEPS[target].scrambleOnEnter) applyScramble()
+    }
+
+    /** Go to the next step. */
     function advance() {
-        if (step < STEPS.length - 1) setStep(s => s + 1)
+        goToStep(step + 1)
     }
 
+    /** Go to the previous step. */
     function goBack() {
-        if (step > 0) setStep(s => s - 1)
+        goToStep(step - 1)
     }
 
+    /** Start the tutorial over from the first step. */
     function restart() {
         setStep(0)
         setMoveLog('')
     }
 
+    /** Put the tutorial cube back to solved. */
     function resetCube() {
         const solved = getSolvedState()
         cubeRef.current = solved

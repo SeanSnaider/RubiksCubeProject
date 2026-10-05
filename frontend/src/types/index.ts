@@ -1,3 +1,10 @@
+/**
+ * Shared data shapes: the cube model and recorded solves.
+ *
+ * The cube model mirrors the backend's (`backend/app/models/cube.py`): six 3x3
+ * faces, each sticker named by the face it belongs to when solved.
+ */
+
 // Color represents a sticker - named after the face it belongs to when solved
 export type Color = 'U' | 'D' | 'L' | 'R' | 'F' | 'B';
 
@@ -14,8 +21,7 @@ export interface CubeState {
   B: Face;  // Back (blue)
 }
 
-export type TimerPhase = 'idle' | 'inspection' | 'running' | 'stopped';
-
+/** A recorded solve, as stored in localStorage (and by the backend API). */
 export interface Solve {
   _id: string;
   time_ms: number;

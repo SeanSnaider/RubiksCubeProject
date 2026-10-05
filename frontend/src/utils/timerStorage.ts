@@ -1,3 +1,8 @@
+/**
+ * Solve history persistence in localStorage, kept separately for Cube mode
+ * and Timer mode. Every function reads and writes storage directly, so callers
+ * re-read with the matching `get…Solves()` after a change.
+ */
 import type { Solve } from '../types'
 
 // ── Timer solves ────────────────────────────────────────────────────────────
@@ -13,7 +18,12 @@ function loadTimer(): Solve[] {
 }
 
 function persistTimer(solves: Solve[]): void {
-    localStorage.setItem(TIMER_KEY, JSON.stringify(solves))
+    try {
+        localStorage.setItem(TIMER_KEY, JSON.stringify(solves))
+    } catch (error) {
+        // Full or unavailable storage (e.g. private browsing): keep working, unsaved.
+        console.error('Could not save solve history', error)
+    }
 }
 
 export function getTimerSolves(): Solve[] {
@@ -54,7 +64,12 @@ function loadCube(): Solve[] {
 }
 
 function persistCube(solves: Solve[]): void {
-    localStorage.setItem(CUBE_KEY, JSON.stringify(solves))
+    try {
+        localStorage.setItem(CUBE_KEY, JSON.stringify(solves))
+    } catch (error) {
+        // Full or unavailable storage (e.g. private browsing): keep working, unsaved.
+        console.error('Could not save solve history', error)
+    }
 }
 
 export function getCubeSolves(): Solve[] {

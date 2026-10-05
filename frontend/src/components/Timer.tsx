@@ -23,7 +23,7 @@ export function Timer({ time_ms, timerState, lastSolve }: TimerProps) {
                 <div className={`${styles.penalty} ${styles.penaltyDnf}`}>DNF</div>
             )}
             {timerState === 'idle' && (
-                <div className={styles.hint}>Press a move key to start</div>
+                <div className={styles.hint}>Turn the cube to start the timer. Press ? (bottom right) for the keys.</div>
             )}
         </div>
     )
