@@ -5,6 +5,10 @@ timer, and a 38-step guided tutorial that teaches the beginner's layer-by-layer 
 watching your cube state. Paint in the colors of your own scrambled cube and it will walk
 you through a solution of about 20 moves, one move at a time.
 
+## Website
+
+<https://rubikscubeproject-frontend2.onrender.com/>
+
 ## Why I built it
 
 I've been speedcubing for over a decade. I can solve a cube in a few seconds using CFOP,
