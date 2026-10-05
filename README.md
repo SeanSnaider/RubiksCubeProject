@@ -1,8 +1,9 @@
 # Rubik's Cube Solver and Teaching Tool
 
 A browser-based Rubik's cube simulator with a near-optimal solver, a competition-style
-timer, and a 38-step guided tutorial that teaches CFOP by watching your cube state. The
-solver returns a solution of 20 moves or fewer in well under a second.
+timer, and a 38-step guided tutorial that teaches the beginner's layer-by-layer method by
+watching your cube state. Paint in the colors of your own scrambled cube and it will walk
+you through a solution of about 20 moves, one move at a time.
 
 ## Why I built it
 
@@ -82,11 +83,6 @@ so it still applies to the cube the user is actually holding. That's
 orientations rather than special-casing, and it's why the solver accepts a cube you've
 been rotating freely while you turn it.
 
-<!-- Two details here are reconstructed from the debug scripts in git history
-     (test_face_orientation.py, analyze_invalid_state.py) rather than from your memory:
-     that M' was the case you hit first, and that you spent real time down the
-     edge-orientation path before finding it. Correct either if it went differently. -->
-
 ### Rendering
 
 The cube renders as a single inline SVG: 54 stickers drawn as four-point polygons at
@@ -104,18 +100,45 @@ its new state. For a keyboard-driven trainer where turns come faster than an ani
 could play, that's the behavior I'd want anyway, but a real 3D representation is the
 obvious next step if the view ever needs to rotate.
 
-### Three modes
+### Four modes
 
 - **Cube** — Keyboard-driven cube manipulation using csTimer-compatible bindings. The
   timer starts on your first non-rotation move and stops the instant the state is solved,
   which then records the solve and deals a new scramble.
 - **Timer** — A plain spacebar timer for solves on a physical cube. Hold to arm, with a
   hold-progress indicator, release to start.
-- **Learn** — A 38-step CFOP tutorial covering notation, the cross, the first two layers,
-  and OLL/PLL. Steps that teach an algorithm are gated: the tutorial reads your actual
-  cube state through validators like `isCrossComplete` and `isOLLComplete` and won't
-  advance until you've genuinely done it. Some steps scramble the cube on entry so you
-  have to recognize the case rather than replay a memorized sequence.
+- **Learn** — A 38-step beginner's-method tutorial covering notation, the flower and
+  cross, the first two layers, and orienting and permuting the last layer. Steps that
+  teach an algorithm are gated: the tutorial reads your actual cube state through
+  validators like `isCrossComplete` and `isOLLComplete` and won't advance until you've
+  genuinely done it. Some steps scramble the cube on entry so you have to recognize the
+  case rather than replay a memorized sequence.
+- **Solve** — Paint the colors of a physical cube onto a blank net (white center on top,
+  green in front), and get a Kociemba two-phase solution you can step through one move at
+  a time, forward and back, with the cube shown after every move and each move spelled
+  out in words for people who don't know the notation yet.
+
+### Solving a cube you're holding
+
+Solve mode runs Kociemba's two-phase algorithm in the browser through
+[cubejs](https://github.com/ldez/cubejs) (vendored, since its npm package pulls in
+hundreds of unused packages), inside a Web Worker. Building its tables takes
+about a second, so the worker starts the first time the tab is opened and the page never
+freezes while it works; a solve after that takes a fraction of a second and comes back
+in 22 moves or fewer.
+
+The hard part of hand-entered cubes is that people make typos, and the search library
+does no validation: hand it a cube with one twisted corner and it doesn't fail, it just
+searches for a very long time. So every cube goes through
+[`findCubeProblems()`](frontend/src/utils/cubeValidation.ts) first, which reconstructs the
+pieces from the stickers and checks, in order, for blanks, color counts, stickers that
+don't form a real piece, duplicate pieces, and finally the three invariants every
+reachable cube satisfies: corner twist, edge flip and permutation parity. Each failure
+comes back as something the user can act on ("the top-right-front corner is
+white-green-red, which isn't a real corner piece") instead of "invalid cube".
+
+The centers are fixed rather than painted. That rules out a whole class of mistakes and
+keeps the solution in the orientation the user is already holding.
 
 ### Timer and stats
 
@@ -132,9 +155,9 @@ best bug-reporting channel I could have asked for.
 | Layer | Tech |
 |---|---|
 | Cube engine | Python (backend), TypeScript port (browser) |
-| Solver | RubikTwoPhase (Kociemba two-phase, pure Python) |
+| Solver | RubikTwoPhase (API) and cubejs in a Web Worker (Solve mode), both Kociemba two-phase |
 | API | FastAPI, Uvicorn |
-| Frontend | React 19, TypeScript, Vite |
+| Frontend | React 19, TypeScript, Vite, Vitest |
 | Rendering | Inline SVG |
 | Storage | localStorage; MongoDB (Motor) on the API |
 | Deployment | Render (`render.yaml`) |
@@ -152,7 +175,7 @@ cd RubiksCubeProject
 cd backend
 python -m venv venv
 source venv/Scripts/activate        # macOS/Linux: source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt  # runtime deps + pytest; use requirements.txt in prod
 cp .env.example .env                # defaults are fine for local dev
 uvicorn app.main:app --reload
 
@@ -163,22 +186,31 @@ cp .env.example .env
 npm run dev
 ```
 
-The first solve request loads the two-phase pruning tables from `backend/twophase/` and
-takes a few seconds; every request after that is sub-second.
+The frontend works on its own. Cube, Timer, Learn and Solve modes all run in the
+browser, so the backend is only needed for the API itself. Its first solve request loads
+the two-phase pruning tables from `backend/twophase/` (run uvicorn from `backend/` so it
+finds them) and takes a few seconds; every request after that is sub-second.
+
+### Tests
+
+```bash
+cd backend && python -m pytest     # solver boundary + API; Mongo tests skip without a DB
+cd frontend && npm test            # move engine, cube validation, in-browser solver
+```
 
 ## What I'd do differently
 
-- **The solve endpoint isn't wired into the UI.** `POST /api/cube/solve` works and returns
-  a correct solution in standard notation, but nothing in the frontend calls it, so the
-  headline feature is reachable only through the API. The cube renders as a static SVG,
-  so showing a solution means either stepping through it move by move or building real
-  animation first — which is the honest reason it isn't done yet.
+- **Two solvers.** Solve mode runs Kociemba's algorithm in the browser so it works with no
+  backend at all, which leaves `POST /api/cube/solve` correct, tested, and still not
+  called by the UI. Two implementations of the same algorithm is one more than the app
+  needs.
 - **MongoDB is connected but unused.** The solve-history endpoints and the Motor
   integration are all there, and `utils/api.ts` has typed clients for them, but no
   component calls them — localStorage does the real work. Either finish the sync or drop
   the dependency; carrying a database the app never reads is the worst of both.
-- **The move engine still has no tests.** The solver boundary is covered, and the solves
-  controller has a couple of tests that need a live MongoDB to pass, but the engine itself
-  doesn't — despite being the easiest thing in the project to test. It's pure functions
-  with an exact oracle, and there are now two implementations that have to agree. `pytest`
-  also isn't in `requirements.txt`, so running any of it means installing it by hand.
+- **The Python move engine still has no tests of its own.** The TypeScript engine now
+  has property tests (every quarter turn has order 4, every move undoes its inverse,
+  known algorithms have known orders), and Solve mode checks it against cubejs on every
+  test run. The Python engine is only exercised indirectly through the solver tests.
+  The two implementations still have to agree, and beyond the one-off cross-check
+  described above, nothing automated checks that they do.

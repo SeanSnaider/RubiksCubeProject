@@ -1,73 +1,39 @@
-# React + TypeScript + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite. See the [root README](../README.md) for what the app does and
+how the pieces fit together.
 
-Currently, two official plugins are available:
+## Commands
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+cp .env.example .env   # only needed if the API isn't at http://localhost:8000/api
+npm run dev            # http://localhost:5173
+npm test               # Vitest unit tests (move engine, validation, solver, formatting)
+npm run lint
+npm run build          # type-check, then build to dist/
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The app runs entirely in the browser. Moves, scrambles, stats, history (localStorage) and
+the Solve mode solver need no backend.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Layout
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+| Path | What's there |
+|---|---|
+| `src/App.tsx` | Root component, mode switching, Cube mode |
+| `src/components/` | One component per file, each with a CSS module |
+| `src/utils/cubeMoves.ts` | Move engine, a port of `backend/app/services/cube_service.py` |
+| `src/utils/cubeValidation.ts` | Facelet serialization and the solvability checks for entered cubes |
+| `src/solver/` | Kociemba two-phase solver, run in a Web Worker |
+| `src/vendor/cubejs/` | Vendored cubejs solver (MIT) |
+| `src/utils/*.test.ts`, `src/solver/*.test.ts` | Unit tests |
+
+## Dependencies worth knowing about
+
+- **cubejs** (vendored in `src/vendor/cubejs/`): the Kociemba two-phase solver used by
+  Solve mode. It's vendored rather than installed because the npm package drags in the
+  whole `npm@6` CLI as a runtime dependency; that directory's README has the details and
+  how to update it. It does not validate its input, so always run `findCubeProblems()`
+  first, which `solveCube()` does for you.
+- **vitest** (dev): unit test runner; shares Vite's config.
