@@ -34,3 +34,6 @@ nul
 
 # Build output
 *.pyc
+
+# Claude Code per-user settings
+.claude/settings.local.json
