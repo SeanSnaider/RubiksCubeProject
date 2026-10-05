@@ -1,9 +1,16 @@
+# Packaging for the original desktop (Pygame) version of the project.
+# The web app in backend/ and frontend/ does not use this package.
 [project]
 name = "RubiksCube"
 version = "1.0.0"
-description = "" #TODO: Add a short description of your package
-authors = [{name = "Your Name", email = "your@email.com"}] #TODO: Add your name and email
+description = "Original desktop Rubik's cube simulator and beginner teaching tool, built with Pygame and the kociemba solver"
+authors = [{name = "Sean Snaider", email = "snaider.s@northeastern.edu"}]
 requires-python = ">=3.9"
+dependencies = [
+    "pygame",   # Window, rendering and keyboard input
+    "Pillow",   # Image drawing (PIL.Image / ImageDraw)
+    "kociemba", # Two-phase solver; a C extension, so it needs a C compiler to install
+]
 dynamic = ["optional-dependencies"]
 
 [build-system]
@@ -11,11 +18,8 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
-optional-dependencies = {dev = {file = ["dev-requirements.txt"]}} # add packages for development in the dev-requirements.txt file
+optional-dependencies = {dev = {file = ["dev-requirements.txt"]}}
 
 [project.scripts]
-# TODO: add your CLI entry points here
-
-
-
-
+rubiks-cube = "RubiksCube.RubiksCube:main"            # Free-play simulator
+rubiks-cube-tutorial = "RubiksCube.teaching_tool:main" # Guided beginner tutorial
